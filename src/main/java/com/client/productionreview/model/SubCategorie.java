@@ -7,6 +7,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,4 +27,8 @@ public class SubCategorie {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "categorie_id", referencedColumnName="id",nullable=false,unique=true)
     private Categorie categorieId;
+
+//    @OneToMany(mappedBy = "subCategorie")
+//    private List<Product> productions = new ArrayList<>();
+
 }
