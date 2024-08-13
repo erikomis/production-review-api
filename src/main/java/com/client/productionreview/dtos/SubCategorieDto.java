@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SubCategorieDto {
 
-
     private Long id;
+
     @NotBlank(message = "Name is required")
     private String name;
     @NotBlank(message = "Description is required")

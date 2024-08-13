@@ -6,6 +6,7 @@ import com.client.productionreview.service.SubCategoriaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping(value = "/sub-categorie")
@@ -30,7 +31,7 @@ public class SubCategoriaController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         subCategoriaService.deleteSubCategorie(id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
     }
@@ -41,7 +42,7 @@ public class SubCategoriaController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAll() {
+    public ResponseEntity<List<SubCategorie>> getAll() {
         return ResponseEntity.status(HttpStatus.OK).body(subCategoriaService.getAllSubCategorie());
     }
 
