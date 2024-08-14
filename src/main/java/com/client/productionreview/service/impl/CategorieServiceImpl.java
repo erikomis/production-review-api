@@ -3,6 +3,8 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.CategorioDto;
 
+import com.client.productionreview.exception.BusinessExcepion;
+import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.model.Categorie;
 import com.client.productionreview.repositories.jpa.CategorieRepository;
 import com.client.productionreview.service.CategorieService;
@@ -28,12 +30,9 @@ public class CategorieServiceImpl implements CategorieService {
 
         var exists = categorieRepository.findByName(categorie.getName());
 
-
         if(exists.isPresent()){
-            throw new RuntimeException("Categorie already exists");
+            throw new BusinessExcepion("Categorie already exists");
         }
-
-
 
         return categorieRepository.save(
                 Categorie.builder()
@@ -50,7 +49,7 @@ public class CategorieServiceImpl implements CategorieService {
         var categorie = categorieRepository.findById(id);
 
         if(categorie.isEmpty()){
-            throw new RuntimeException("Categorie not found");
+            throw new NotFoundException("Categorie not found");
         }
 
        return  categorieRepository.save(
@@ -60,10 +59,6 @@ public class CategorieServiceImpl implements CategorieService {
                         .description(categorioDto.getDescription())
                         .slug(categorioDto.getSlug())
                         .build());
-
-
-
-
     }
 
     @Override
@@ -72,7 +67,7 @@ public class CategorieServiceImpl implements CategorieService {
         var categorie = categorieRepository.findById(id);
 
         if(categorie.isEmpty()){
-            throw new RuntimeException("Categorie not found");
+            throw new NotFoundException("Categorie not found");
         }
 
         categorieRepository.deleteById(id);
@@ -84,7 +79,7 @@ public class CategorieServiceImpl implements CategorieService {
         var categorie = categorieRepository.findById(id);
 
         if(categorie.isEmpty()){
-            throw new RuntimeException("Categorie not found");
+            throw new NotFoundException("Categorie not found");
         }
 
         return categorie.get();
