@@ -1,5 +1,6 @@
 package com.client.productionreview.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +16,7 @@ import java.util.List;
 @Builder
 @Table(name = "categories")
 @Entity
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Categorie {
 
 
@@ -23,12 +25,12 @@ public class Categorie {
     private Long id;
     private String name;
     private String description;
-
     private String slug;
 
+    @ManyToOne
+    @JoinColumn(name = "sub_categoria_id", referencedColumnName = "id")
+    private SubCategorie subCategoria;
 
-    @OneToMany(mappedBy = "categorieId" ,cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<SubCategorie> subCategories = new ArrayList<>();
 
 
 }
