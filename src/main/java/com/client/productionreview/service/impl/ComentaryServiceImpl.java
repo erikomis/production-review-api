@@ -28,7 +28,7 @@ public class ComentaryServiceImpl  implements ComentaryService {
         Optional<Product> product = productRepository.findById(comentary.getProductId());
 
         if(product.isEmpty()){
-            throw new RuntimeException("Product not found");
+            throw new NotFoundException("Product not found");
         }
 
 
