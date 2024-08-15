@@ -3,6 +3,7 @@ package com.client.productionreview.exception.handler;
 import com.client.productionreview.dtos.error.ErrorResponseDto;
 import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.BusinessExcepion;
+import com.client.productionreview.exception.IoFileException;
 import com.client.productionreview.exception.NotFoundException;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -79,6 +80,16 @@ public class ResourceHandler {
                 .build());
     }
 
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleNotFoundException(NotFoundException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.NOT_FOUND)
+                .statusCode(HttpStatus.NOT_FOUND.value())
+                .build());
+    }
+
 
     @ExceptionHandler(BusinessExcepion.class)
     public  ResponseEntity<ErrorResponseDto> handleBadRequestException(BusinessExcepion e) {
@@ -87,6 +98,16 @@ public class ResourceHandler {
                 .message(errorMessage)
                 .httpStatus(HttpStatus.BAD_REQUEST)
                 .statusCode(HttpStatus.BAD_REQUEST.value())
+                .build());
+    }
+
+    @ExceptionHandler(IoFileException.class)
+    public ResponseEntity<ErrorResponseDto> handleIonException(IoFileException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .build());
     }
 
