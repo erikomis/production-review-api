@@ -90,7 +90,7 @@ public class SubCategorieServiceImpl implements SubCategoriaService {
         var existsId = subCategorieRepository.findById(id);
 
         if (existsId.isEmpty()) {
-            throw new RuntimeException("SubCategorie not found");
+            throw new NotFoundException("SubCategorie not found");
         }
 
         subCategorieRepository.deleteById(id);
