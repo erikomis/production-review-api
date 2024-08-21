@@ -11,8 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -23,12 +25,32 @@ public class ResourceHandler {
 
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleNotFoudException(NotFoundException e) {
-        String errorMenssage = e.getMessage();
+    public ResponseEntity<ErrorResponseDto> handleNotFoundException(NotFoundException e) {
+        String errorMessage = e.getMessage();
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponseDto.builder()
-                .message(errorMenssage)
+                .message(errorMessage)
                 .httpStatus(HttpStatus.NOT_FOUND)
                 .statusCode(HttpStatus.NOT_FOUND.value())
+                .build());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponseDto> handleResponseStatusException(ResponseStatusException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .statusCode(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value())
+                .build());
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponseDto> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.BAD_REQUEST)
+                .statusCode(HttpStatus.BAD_REQUEST.value())
                 .build());
     }
 
@@ -80,15 +102,6 @@ public class ResourceHandler {
                 .build());
     }
 
-    @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleNotFoundException(NotFoundException e) {
-        String errorMessage = e.getMessage();
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponseDto.builder()
-                .message(errorMessage)
-                .httpStatus(HttpStatus.NOT_FOUND)
-                .statusCode(HttpStatus.NOT_FOUND.value())
-                .build());
-    }
 
 
     @ExceptionHandler(BusinessExcepion.class)
