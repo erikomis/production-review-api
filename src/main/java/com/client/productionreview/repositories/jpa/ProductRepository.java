@@ -20,9 +20,9 @@ public interface ProductRepository extends PagingAndSortingRepository<Product,Lo
 
 
     @Query(
-            value = "SELECT * FROM product p WHERE p.name = :product",
-            nativeQuery = true,
-            countQuery = "SELECT count(*) FROM product p WHERE p.name = :product"
+            value = "SELECT * FROM Product p WHERE p.name LIKE :product",
+            countQuery = "SELECT count(*) FROM product",
+            nativeQuery = true
     )
     Page<Product> findAllByProduct(@Param("product") final String product, final Pageable pageable);
 
