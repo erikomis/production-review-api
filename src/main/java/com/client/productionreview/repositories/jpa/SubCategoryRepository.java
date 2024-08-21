@@ -1,12 +1,12 @@
 package com.client.productionreview.repositories.jpa;
-import com.client.productionreview.model.SubCategorie;
+import com.client.productionreview.model.SubCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface SubCategorieRepository   extends JpaRepository<SubCategorie, Long> {
+public interface SubCategoryRepository extends JpaRepository<SubCategory, Long> {
 
-    Optional<SubCategorie> findByName(String subCategorieName);
+    Optional<SubCategory> findByName(String subCategorieName);
 }

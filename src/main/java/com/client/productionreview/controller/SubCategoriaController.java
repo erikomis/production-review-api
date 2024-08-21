@@ -1,49 +1,66 @@
 package com.client.productionreview.controller;
 
-import com.client.productionreview.dtos.SubCategorieDto;
-import com.client.productionreview.model.SubCategorie;
-import com.client.productionreview.service.SubCategoriaService;
+import com.client.productionreview.controller.mapper.SubCategoryMapper;
+import com.client.productionreview.dtos.subCategory.SubCategoryResponseDTO;
+import com.client.productionreview.dtos.subCategory.SubCategoryRequestDTO;
+import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.service.SubCategoryService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping(value = "/sub-categorie")
+@RequestMapping( "/sub-categorie")
 public class SubCategoriaController {
 
 
-    private SubCategoriaService subCategoriaService;
+    private final SubCategoryService subCategoryService;
 
+    private final SubCategoryMapper subCategoryMapper;
 
-    public SubCategoriaController(SubCategoriaService subCategoriaService) {
-        this.subCategoriaService = subCategoriaService;
+    SubCategoriaController(SubCategoryService subCategoryService, SubCategoryMapper subCategoryMapper){
+        this.subCategoryService = subCategoryService;
+        this.subCategoryMapper = subCategoryMapper;
     }
 
     @PostMapping
-    public ResponseEntity<SubCategorie> create(@RequestBody SubCategorieDto subCategoriaDto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(subCategoriaService.addSubCategorie(subCategoriaDto));
+    @ResponseStatus(HttpStatus.CREATED)
+    public SubCategoryResponseDTO add(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto){
+        SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
+        var subCategoriaModel = subCategoryService.addSubCategory(model);
+        return subCategoryMapper.toDTO(subCategoriaModel);
+
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<SubCategorie> update(@PathVariable Long id, @RequestBody SubCategorieDto subCategoriaDto) {
-        return ResponseEntity.status(HttpStatus.OK).body(subCategoriaService.updateSubCategorie( subCategoriaDto, id));
+    @ResponseStatus(HttpStatus.OK)
+    public SubCategoryResponseDTO update(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto, @PathVariable Long id){
+        SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
+        var subCategoriaModel = subCategoryService.updateSubCategory(model, id);
+        return subCategoryMapper.toDTO(subCategoriaModel);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        subCategoriaService.deleteSubCategorie(id);
-        return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id) {
+        subCategoryService.deleteSubCategory(id);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SubCategorie> get(@PathVariable Long id) {
-        return ResponseEntity.status(HttpStatus.OK).body(subCategoriaService.getSubCategorie(id));
+    @ResponseStatus(HttpStatus.OK)
+    public SubCategoryResponseDTO get(@PathVariable Long id) {
+        SubCategory subCategoriaModel = subCategoryService.getSubCategory(id);
+        return subCategoryMapper.toDTO(subCategoriaModel);
+
     }
 
     @GetMapping
-    public ResponseEntity<List<SubCategorie>> getAll() {
-        return ResponseEntity.status(HttpStatus.OK).body(subCategoriaService.getAllSubCategorie());
+    @ResponseStatus(HttpStatus.OK)
+    public List<SubCategory> getAll() {
+       return subCategoryService.getAllSubCategorie();
+
     }
 
 }

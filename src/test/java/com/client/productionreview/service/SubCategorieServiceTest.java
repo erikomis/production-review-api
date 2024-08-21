@@ -1,15 +1,12 @@
 package com.client.productionreview.service;
 
-import com.client.productionreview.dtos.SubCategorieDto;
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Categorie;
-import com.client.productionreview.model.SubCategorie;
-import com.client.productionreview.repositories.jpa.CategorieRepository;
-import com.client.productionreview.repositories.jpa.SubCategorieRepository;
-import com.client.productionreview.service.impl.SubCategorieServiceImpl;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import com.client.productionreview.model.Category;
+import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.repositories.jpa.CategoryRepository;
+import com.client.productionreview.repositories.jpa.SubCategoryRepository;
+import com.client.productionreview.service.impl.SubCategoryServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -17,143 +14,320 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
-
 
 @ExtendWith(MockitoExtension.class)
 public class SubCategorieServiceTest {
 
     @InjectMocks
-    private SubCategorieServiceImpl subCategorieService;
-
+    private SubCategoryServiceImpl subCategorieService;
 
 
     @Mock
-    private SubCategorieRepository subCategorieRepository;
+    private SubCategoryRepository subCategoryRepository;
 
     @Mock
-    private CategorieRepository categorieRepository;
-
-    private SubCategorieDto subCategorieDto;
-
-    @BeforeEach
-    public void LoadSubCategorie() {
-        subCategorieDto = new SubCategorieDto();
-        subCategorieDto.setName("teste");
-        subCategorieDto.setDescription("teste");
-        subCategorieDto.setSlug("teste");
-        subCategorieDto.setCategorieId(1L);
-    }
+    private CategoryRepository categoryRepository;
 
 
     @Test
-    void given_create_when_then_createSubCategoria() {
-
-        Categorie categorie = new Categorie();
-
-        categorie.setId(subCategorieDto.getCategorieId());
+    void givenSubCategory_whenAddSubCategory_thenReturnSubCategory() {
 
 
-
-        SubCategorie subCategorie = new SubCategorie();
-        subCategorie.setId(1L);
-        subCategorie.setName(subCategorieDto.getName());
-        subCategorie.setDescription(subCategorieDto.getDescription());
-        subCategorie.setSlug( subCategorieDto.getSlug());
-        subCategorie.setCategorieId(categorie);
+        Category category = new Category();
+        category.setId(1L);
+        category.setName("category");
+        category.setDescription("description");
 
 
-        when(categorieRepository.findById(subCategorieDto.getCategorieId())).thenReturn(Optional.of(categorie));
-
-        when(subCategorieRepository.findByName(subCategorieDto.getName())).thenReturn(Optional.empty());
-
-        when(subCategorieService.addSubCategorie(subCategorieDto)).thenReturn(subCategorie);
-
-        var subCategorieS= subCategorieService.addSubCategorie(subCategorieDto);
-        Assertions.assertEquals(subCategorieS, subCategorie);
-
-        Assertions.assertNotNull(subCategorieS.getId());
-    }
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
 
 
-    @Test
-    void given_create_when_then_createSubCategoria_throwBusinessExcepion() {
+        when(categoryRepository.findById(category.getId())).thenReturn(java.util.Optional.of(category));
+        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.empty());
+        when(subCategoryRepository.save(subCategory)).thenReturn(subCategory);
+        SubCategory subCategory1 = subCategorieService.addSubCategory(subCategory);
+        assertEquals(subCategory1.getName(), subCategory.getName());
+        assertEquals(subCategory1.getDescription(), subCategory.getDescription());
+        assertEquals(subCategory1.getSlug(), subCategory.getSlug());
+        assertEquals(subCategory1.getCategorieId(), subCategory.getCategorieId());
 
-        SubCategorie subCategorie = new SubCategorie();
-        subCategorie.setId(1L);
-        subCategorie.setName("teste");
-        subCategorie.setDescription("teste");
-        subCategorie.setSlug("teste");
-
-
-
-        when(categorieRepository.findById(subCategorieDto.getCategorieId())).thenReturn(Optional.empty());
-
-        Assertions.assertThrows(BusinessExcepion.class, () -> subCategorieService.addSubCategorie(subCategorieDto));
-
-        // Verifica que o repositório não foi chamado para salvar ou buscar a subcategoria
-        verify(categorieRepository, times(1)).findById(subCategorieDto.getCategorieId());
-        verify(subCategorieRepository, times(0)).findByName(subCategorieDto.getName());
-        verify(subCategorieRepository, times(0)).save(any());
+        verify(subCategoryRepository, times(1)).save(subCategory);
+        verify(subCategoryRepository, times(1)).findByName(subCategory.getName());
+        verify(categoryRepository, times(1)).findById(category.getId());
 
 
     }
 
     @Test
-    void given_create_when_then_createSubCategoria_throwNotFound() {
+    void givenSubCategory_whenAddSubCategory_thenThrowExceptionNotFoundException() {
 
-            SubCategorie subCategorie = new SubCategorie();
-            subCategorie.setId(1L);
-            subCategorie.setName("teste");
-            subCategorie.setDescription("teste");
-            subCategorie.setSlug("teste");
+        Category category = new Category();
+        category.setId(2L);
+        category.setName("category");
+        category.setDescription("description");
 
-            Categorie categorie = new Categorie();
-            categorie.setId(1L);
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
 
-            when(categorieRepository.findById(subCategorieDto.getCategorieId())).thenReturn(Optional.of(categorie));
+        when(categoryRepository.findById(1L)).thenReturn(Optional.empty());
 
-            when(subCategorieRepository.findByName(subCategorieDto.getName())).thenReturn(Optional.of(subCategorie));
+        assertThrows(NotFoundException.class, () -> subCategorieService.addSubCategory(subCategory));
 
-            Assertions.assertThrows(NotFoundException.class, () -> subCategorieService.addSubCategorie(subCategorieDto));
+        verify(categoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(0)).findByName(subCategory.getName());
+        verify(subCategoryRepository, times(0)).save(subCategory);
 
-            // Verifica que o repositório não foi chamado para salvar ou buscar a subcategoria
-            verify(categorieRepository, times(1)).findById(subCategorieDto.getCategorieId());
-            verify(subCategorieRepository, times(1)).findByName(subCategorieDto.getName());
-            verify(subCategorieRepository, times(0)).save(any());
-
-    }
-
-
-
-    @Test
-    void given_findById_when_then_findSubCategoria() {
-
-        SubCategorie subCategorie = new SubCategorie();
-        subCategorie.setId(1L);
-        subCategorie.setName("teste");
-        subCategorie.setDescription("teste");
-        subCategorie.setSlug("teste");
-
-        when(subCategorieRepository.findById(1L)).thenReturn(Optional.of(subCategorie));
-
-        Assertions.assertEquals(subCategorie, subCategorieService.getSubCategorie(1L));
-
-        verify(subCategorieRepository, times(1)).findById(1L);
     }
 
     @Test
-    void given_findById_when_then_findSubCategoria_throw() {
+    void givenSubCategory_whenAddSubCategory_thenThrowExceptionBusinessExcepion() {
 
-        when(subCategorieRepository.findById(1L)).thenReturn(Optional.empty());
+        Category category = new Category();
+        category.setId(2L);
+        category.setName("category");
+        category.setDescription("description");
 
-        Assertions.assertThrows(NotFoundException.class, () -> subCategorieService.getSubCategorie(1L));
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
 
-        verify(subCategorieRepository, times(1)).findById(1L);
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.of(subCategory));
+
+        assertThrows(BusinessExcepion.class, () -> subCategorieService.addSubCategory(subCategory));
+
+        verify(categoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(1)).findByName(subCategory.getName());
+        verify(subCategoryRepository, times(0)).save(subCategory);
+
+    }
+
+    @Test
+    void givenSubCategory_whenUpdateSubCategory_thenReturnSubCategory() {
+
+        Category category = new Category();
+        category.setId(1L);
+        category.setName("category");
+        category.setDescription("description");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+
+        when(categoryRepository.findById(subCategory.getCategorieId())).thenReturn(Optional.of(category));
+        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.empty());
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.of(subCategory));
+        when(subCategoryRepository.save(subCategory)).thenReturn(subCategory);
+
+        SubCategory subCategory1 = subCategorieService.updateSubCategory(subCategory, 1L);
+        assertEquals(subCategory1.getName(), subCategory.getName());
+        assertEquals(subCategory1.getDescription(), subCategory.getDescription());
+        assertEquals(subCategory1.getSlug(), subCategory.getSlug());
+        assertEquals(subCategory1.getCategorieId(), subCategory.getCategorieId());
+
+        verify(categoryRepository, times(1)).findById(subCategory.getCategorieId());
+        verify(subCategoryRepository, times(1)).findByName(subCategory.getName());
+        verify(subCategoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(1)).save(subCategory);
+    }
+
+    @Test
+    void givenSubCategory_whenUpdateSubCategory_thenThrowExceptionNotFoundExceptionCategory() {
+
+        Category category = new Category();
+        category.setId(1L);
+        category.setName("category");
+        category.setDescription("description");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(categoryRepository.findById(subCategory.getCategorieId())).thenReturn(Optional.empty());
+
+
+        assertThrows(NotFoundException.class, () -> {
+            subCategorieService.updateSubCategory(subCategory, 1L);
+        });
+
+        verify(categoryRepository, times(1)).findById(subCategory.getCategorieId());
+        verify(subCategoryRepository, times(0)).findByName(subCategory.getName());
+        verify(subCategoryRepository, times(0)).findById(1L);
+        verify(subCategoryRepository, times(0)).save(subCategory);
+    }
+
+    @Test
+    void givenSubCategory_whenUpdateSubCategory_thenThrowExceptionNotFoundExceptionSubCategory() {
+
+        Category category = new Category();
+        category.setId(1L);
+        category.setName("category");
+        category.setDescription("description");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(categoryRepository.findById(subCategory.getCategorieId())).thenReturn(Optional.of(category));
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            subCategorieService.updateSubCategory(subCategory, 1L);
+        });
+
+        verify(categoryRepository, times(1)).findById(subCategory.getCategorieId());
+        verify(subCategoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(0)).findByName(subCategory.getName());
+        verify(subCategoryRepository, times(0)).save(subCategory);
     }
 
 
+    @Test
+    void givenSubCategory_whenUpdateSubCategory_thenThrowExceptionBusinessExcepion() {
+
+        Category category = new Category();
+        category.setId(1L);
+        category.setName("category");
+        category.setDescription("description");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(categoryRepository.findById(subCategory.getCategorieId())).thenReturn(Optional.of(category));
+        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.of(subCategory));
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.of(subCategory));
+
+
+
+        assertThrows(BusinessExcepion.class, () -> {
+            subCategorieService.updateSubCategory(subCategory, 1L);
+        });
+        verify(categoryRepository, times(1)).findById(subCategory.getCategorieId());
+        verify(subCategoryRepository, times(1)).findByName(subCategory.getName());
+        verify(categoryRepository, times(1)).findById(subCategory.getCategorieId());
+        verify(subCategoryRepository, times(0)).save(subCategory);
+
+
+    }
+
+    @Test
+    void givenSubCategory_whenDeleteSubCategory_thenDeleteSubCategory() {
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setId(1L);
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.of(subCategory));
+
+        subCategorieService.deleteSubCategory(1L);
+
+        verify(subCategoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(1)).deleteById(1L);
+
+
+    }
+
+
+    @Test
+    void givenSubCategory_whenDeleteSubCategory_thenThrowExceptionNotFoundException() {
+
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            subCategorieService.deleteSubCategory(1L);
+        });
+
+        verify(subCategoryRepository, times(1)).findById(1L);
+        verify(subCategoryRepository, times(0)).deleteById(1L);
+    }
+
+
+    @Test
+    void givenSubCategory_whenGetSubCategory_thenReturnSubCategory() {
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setId(1L);
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.of(subCategory));
+
+        SubCategory subCategory1 = subCategorieService.getSubCategory(1L);
+
+        assertEquals(subCategory1.getId(), subCategory.getId());
+        assertEquals(subCategory1.getName(), subCategory.getName());
+        assertEquals(subCategory1.getDescription(), subCategory.getDescription());
+        assertEquals(subCategory1.getSlug(), subCategory.getSlug());
+        assertEquals(subCategory1.getCategorieId(), subCategory.getCategorieId());
+
+        verify(subCategoryRepository, times(1)).findById(1L);
+
+    }
+
+    @Test
+    void givenSubCategory_whenGetSubCategory_thenThrowExceptionNotFoundException() {
+
+        when(subCategoryRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> {
+            subCategorieService.getSubCategory(1L);
+        });
+
+        verify(subCategoryRepository, times(1)).findById(1L);
+    }
+
+
+    @Test
+    void givenSubCategory_whenGetSubCategory_thenReturnSubCategoryAll() {
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setId(1L);
+        subCategory.setName("subCategory1");
+        subCategory.setDescription("description1");
+        subCategory.setSlug("slug1");
+        subCategory.setCategorieId(1L);
+
+        when(subCategoryRepository.findAll()).thenReturn(List.of(subCategory));
+
+        List<SubCategory> subCategory1 = subCategorieService.getAllSubCategorie();
+
+        assertEquals(subCategory1.size(), 1);
+        assertEquals(subCategory1.get(0).getId(), subCategory.getId());
+        assertEquals(subCategory1.get(0).getName(), subCategory.getName());
+        assertEquals(subCategory1.get(0).getDescription(), subCategory.getDescription());
+        assertEquals(subCategory1.get(0).getSlug(), subCategory.getSlug());
+        assertEquals(subCategory1.get(0).getCategorieId(), subCategory.getCategorieId());
+
+        verify(subCategoryRepository, times(1)).findAll();
+    }
 
 }
