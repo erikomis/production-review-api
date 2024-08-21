@@ -1,0 +1,44 @@
+version: "3.8"
+
+networks:
+  gv-network:
+    driver: bridge
+volumes:
+  prometheus_data:
+  grafana_data:
+
+
+services:
+  web:
+    build: .
+    ports:
+        - "8084:8084"
+    depends_on:
+      - db
+  db:
+    image: mariadb:11.3
+    ports:
+      - "3306:3306"
+    volumes:
+      - banco:/var/lib/mysql
+  redis:
+    image: redis:6.0.9
+    ports:
+      - "6379:6379"
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - gv-network
+    ports:
+      - 9090:9090
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    ports:
+      - 3000:3000
+    networks:
+      - gv-network
