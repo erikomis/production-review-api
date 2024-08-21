@@ -1,12 +1,14 @@
 package com.client.productionreview.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
+@EnableConfigurationProperties(FileStorageProperties.class)
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final FileStorageProperties fileStorageProperties;
