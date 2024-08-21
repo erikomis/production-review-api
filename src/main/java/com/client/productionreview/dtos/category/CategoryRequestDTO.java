@@ -1,4 +1,4 @@
-package com.client.productionreview.dtos;
+package com.client.productionreview.dtos.category;
 
 
 import jakarta.validation.constraints.NotBlank;
@@ -11,10 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Data
 @Builder
-public class CategorioDto {
+public class CategoryRequestDTO {
 
-
-    private Long id;
     @NotBlank(message = "Name is required")
     private String name;
     @NotBlank(message = "Description is required")

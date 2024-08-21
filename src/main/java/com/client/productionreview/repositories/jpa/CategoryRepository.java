@@ -1,13 +1,13 @@
 package com.client.productionreview.repositories.jpa;
 
-import com.client.productionreview.model.Categorie;
+import com.client.productionreview.model.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface CategorieRepository extends JpaRepository<Categorie , Long> {
+public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    Optional<Categorie> findByName(String categorieName);
+    Optional<Category> findByName(String categorieName);
 }
