@@ -1,6 +1,7 @@
-package com.client.productionreview.dtos;
+package com.client.productionreview.dtos.review;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,18 +11,17 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ComentaryDto {
+public class ReviewRequestDTO {
 
-    private Long id;
+
     @NotBlank(message = "Title is required")
     private String title;
+
     @NotBlank(message = "Description is required")
     private String description;
-//    @NotBlank(message = "Image is required")
-//    private String image;
-    @NotBlank(message = "Note is required")
+
+    @NotNull(message = "Note is required")
     private  Long  note;
 
-    @NotBlank(message = "Product is required")
     private Long productId;
 }
