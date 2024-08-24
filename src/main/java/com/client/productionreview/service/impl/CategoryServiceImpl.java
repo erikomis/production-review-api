@@ -3,10 +3,12 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Category;
+import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.service.CategoryService;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,7 @@ public class CategoryServiceImpl implements CategoryService {
 
 
     @Override
+    @CacheEvict(value = "category", allEntries = true)
     public Category addCatogory(Category category) {
         Optional<Category> exists = categoryRepository.findByName(category.getName());
 
@@ -36,6 +39,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "category", allEntries = true, key = "#id")
     public Category updateCatogory(Category category, Long id) {
        Optional<Category> categoryExist = categoryRepository.findById(id);
         if(categoryExist.isEmpty()){
@@ -54,6 +58,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @CacheEvict(value = "category", allEntries = true, key = "#id")
     public void deleteCatogory(Long id) {
 
         var category = categoryRepository.findById(id);
@@ -67,6 +72,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "category", key = "#id")
     public Category getCatogory(Long id) {
         var category = categoryRepository.findById(id);
 
@@ -79,6 +85,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
+    @Cacheable(value = "category" )
     public List<Category> getAllCatogories() {
         return categoryRepository.findAll();
     }
