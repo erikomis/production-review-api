@@ -1,4 +1,4 @@
-package com.client.productionreview.model;
+package com.client.productionreview.model.jpa;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -15,23 +15,26 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "products")
-public class Product {
+public class Review {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
+
+    private String title;
+
     private String description;
-    private String imageUrl;
-    private String slug;
 
-    @OneToOne
-    @JoinColumn(name = "sub_categorie_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private SubCategory subCategorie;
+//    private String image;
 
-    @Column(name = "sub_categorie_id")
-    private Long subCategorieId;
+    private  Long  note;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", referencedColumnName = "id",insertable = false, updatable = false)
+    private Product product;
+
+    @Column(name = "product_id")
+    private Long productId;
 
 
     @CreationTimestamp
@@ -41,9 +44,5 @@ public class Product {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private  LocalDateTime updatedAt;
+
 }
-
-
-
-
-

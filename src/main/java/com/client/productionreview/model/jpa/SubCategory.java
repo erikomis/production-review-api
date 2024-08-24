@@ -1,4 +1,4 @@
-package com.client.productionreview.model;
+package com.client.productionreview.model.jpa;
 
 
 import jakarta.persistence.*;
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "sub_categorie")
+@Table(name = "sub_category")
 @Entity
 public class SubCategory {
 
@@ -27,10 +27,10 @@ public class SubCategory {
     private String slug;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "categorie_id", referencedColumnName="id", insertable = false, updatable = false)
-    private Category categorie;
+    @JoinColumn(name = "category_id", referencedColumnName="id", insertable = false, updatable = false)
+    private Category category;
 
-    @Column(name = "categorie_id")
+    @Column(name = "category_id")
     private Long categorieId;
 
 
