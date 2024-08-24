@@ -1,6 +1,6 @@
 package com.client.productionreview.service;
 
-import com.client.productionreview.model.Review;
+import com.client.productionreview.model.jpa.Review;
 
 import java.util.List;
 
