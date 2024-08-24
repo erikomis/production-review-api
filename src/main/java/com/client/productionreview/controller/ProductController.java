@@ -3,23 +3,23 @@ package com.client.productionreview.controller;
 import com.client.productionreview.controller.mapper.ProductMapper;
 import com.client.productionreview.dtos.product.ProductRequestDTO;
 import com.client.productionreview.dtos.product.ProductResponseDTO;
-import com.client.productionreview.model.Product;
+import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.service.ProductService;
 import com.client.productionreview.utils.PaginationUtils;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Objects;
 
 @RestController
-@RequestMapping(value = "/production")
+@RequestMapping(value = "/api/v1/production")
 public class ProductController {
 
 
@@ -37,6 +37,8 @@ public class ProductController {
             value = "/add"
     )
     @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
     public ProductResponseDTO addProduct(
             @Valid @RequestBody ProductRequestDTO productRequestDTO) {
         Product model = productMapper.toModel(productRequestDTO);
@@ -59,6 +61,8 @@ public class ProductController {
 
 
     @PutMapping( value = "/update/{id}")
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
     @ResponseStatus(HttpStatus.OK)
     public ProductResponseDTO updateProduction(
             @PathVariable("id") Long id,
@@ -69,6 +73,8 @@ public class ProductController {
         return productMapper.toDTO(productService.updateProduct( model, id));
     }
 
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
     @DeleteMapping( "/delete/{id}")
     public ResponseEntity<?> deleteProduction(@PathVariable() Long id) {
         productService.deleteProduct(id);

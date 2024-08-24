@@ -1,13 +1,14 @@
 package com.client.productionreview.service.impl;
 
-import com.client.productionreview.dtos.subCategory.SubCategoryResponseDTO;
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Category;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.Category;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.SubCategoryService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,6 +29,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
 
     @Override
+    @CacheEvict(value = "subCategory", allEntries = true)
     public SubCategory addSubCategory(SubCategory subCategory) {
         Optional<Category> existsCategorie = getExistsCategorie(subCategory.getCategorieId());
 
@@ -47,6 +49,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
 
     @Override
+    @CacheEvict(value = "subCategory", allEntries = true)
     public SubCategory updateSubCategory(SubCategory subCategorie, Long id) {
         Optional<Category> existsCategorie= getExistsCategorie(subCategorie.getCategorieId());
         if (existsCategorie.isEmpty()) {
@@ -76,6 +79,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
     }
 
     @Override
+    @CacheEvict(value = "subCategory", allEntries = true)
     public void deleteSubCategory(Long id) {
         var existsId = subCategoryRepository.findById(id);
         if (existsId.isEmpty()) {
@@ -87,6 +91,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
     }
 
     @Override
+    @Cacheable(value = "subCategory", key = "#id")
     public SubCategory getSubCategory(Long id) {
         var existsId = subCategoryRepository.findById(id);
         if (existsId.isEmpty()) {
@@ -96,6 +101,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
     }
 
     @Override
+    @Cacheable(value = "subCategory")
     public List<SubCategory> getAllSubCategorie() {
         return subCategoryRepository.findAll();
     }

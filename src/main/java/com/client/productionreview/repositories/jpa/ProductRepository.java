@@ -1,6 +1,6 @@
 package com.client.productionreview.repositories.jpa;
 
-import com.client.productionreview.model.Product;
+import com.client.productionreview.model.jpa.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

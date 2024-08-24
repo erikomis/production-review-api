@@ -6,25 +6,37 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
+  banco:
+  redis_data:
 
 
 services:
   web:
+    container_name: web
     build: .
     ports:
         - "8084:8084"
     depends_on:
       - db
   db:
+    container_name: db
     image: mariadb:11.3
     ports:
       - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: senha123
+      MYSQL_DATABASE: production
+      MYSQL_USER: user
+      MYSQL_PASSWORD: senha123
     volumes:
       - banco:/var/lib/mysql
   redis:
-    image: redis:6.0.9
+    container_name: redis
+    image: redis:6.2
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest

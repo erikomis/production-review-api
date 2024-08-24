@@ -3,17 +3,16 @@ package com.client.productionreview.controller;
 import com.client.productionreview.controller.mapper.ReviewMapper;
 import com.client.productionreview.dtos.review.ReviewRequestDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
-import com.client.productionreview.model.Review;
+import com.client.productionreview.model.jpa.Review;
 import com.client.productionreview.service.ReviewService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(value = "/review")
+@RequestMapping(value = "/api/v1/review")
 public class ReviewController {
 
     private final ReviewService reviewService;

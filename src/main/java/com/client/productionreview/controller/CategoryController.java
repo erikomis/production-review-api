@@ -4,17 +4,19 @@ package com.client.productionreview.controller;
 import com.client.productionreview.controller.mapper.CategoryMapper;
 import com.client.productionreview.dtos.category.CategoryRequestDTO;
 import com.client.productionreview.dtos.category.CategoryResponseDTO;
-import com.client.productionreview.model.Category;
+import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.service.CategoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 
-@RequestMapping(value = "/category")
+@RequestMapping(value = "/api/v1/category")
 @RequiredArgsConstructor
 public class CategoryController {
 
@@ -25,6 +27,8 @@ public class CategoryController {
 
     @PostMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
     public CategoryResponseDTO addCatogory(@RequestBody CategoryRequestDTO categorie){
         Category model = categorieMapper.toModel(categorie);
         var categorieModel = categorieService.addCatogory(model);
@@ -34,12 +38,14 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
     public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @RequestBody CategoryRequestDTO categorioDto) {
         Category model = categorieMapper.toModel(categorioDto);
         var categorieModel = categorieService.updateCatogory(model, id);
         return  categorieMapper.toDTO(categorieModel);
     }
 
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCatogory(@PathVariable("id") Long id) {

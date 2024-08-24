@@ -3,7 +3,7 @@ package com.client.productionreview.controller;
 import com.client.productionreview.controller.mapper.CategoryMapper;
 import com.client.productionreview.dtos.category.CategoryRequestDTO;
 import com.client.productionreview.dtos.category.CategoryResponseDTO;
-import com.client.productionreview.model.Category;
+import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.service.CategoryService;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -56,7 +56,7 @@ public class CategoryControllerTest {
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.post("/category/")
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/category/")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"name\": \"Electronics\" }"))
                 .andExpect(status().isCreated())
@@ -78,7 +78,7 @@ public class CategoryControllerTest {
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.put("/category/{id}", id)
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/v1/category/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"name\": \"Home Appliances\" }"))
                 .andExpect(status().isOk())
@@ -92,7 +92,7 @@ public class CategoryControllerTest {
         Long id = 1L;
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.delete("/category/{id}", id))
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/v1/category/{id}", id))
                 .andExpect(status().isNoContent());
     }
 
@@ -108,7 +108,7 @@ public class CategoryControllerTest {
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.get("/category/{id}", id))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.name").value("Electronics"));
@@ -121,7 +121,7 @@ public class CategoryControllerTest {
         Mockito.when(categoryService.getAllCatogories()).thenReturn(categories);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.get("/category"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)));

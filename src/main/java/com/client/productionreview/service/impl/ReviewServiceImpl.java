@@ -1,11 +1,13 @@
 package com.client.productionreview.service.impl;
 
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Product;
-import com.client.productionreview.model.Review;
+import com.client.productionreview.model.jpa.Product;
+import com.client.productionreview.model.jpa.Review;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
 import com.client.productionreview.service.ReviewService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class ReviewServiceImpl implements ReviewService {
 
 
     @Override
+    @CacheEvict(value = "review", allEntries = true)
     public Review saveReview(Review review) {
 
         Optional<Product> product = getProduct(review);
@@ -39,12 +42,14 @@ public class ReviewServiceImpl implements ReviewService {
 
     }
 
+
     private Optional<Product> getProduct(Review review) {
         Optional<Product> product = productRepository.findById(review.getProductId());
         return product;
     }
 
     @Override
+    @CacheEvict(value = "review", allEntries = true, key = "#id")
     public Review updateReview(Review review, Long id) {
 
         Optional<Product> product = getProduct(review);
@@ -66,6 +71,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @CacheEvict(value = "review", allEntries = true, key = "#id")
     public void deleteReview(Long id) {
 
         Optional<Review> reviewOptional = getOptionalReview(id);
@@ -79,6 +85,7 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
+    @Cacheable(value = "review" , key = "#id")
     public Review getReview(Long id) {
 
         Optional<Review> reviewOptional = getOptionalReview(id);
@@ -94,6 +101,7 @@ public class ReviewServiceImpl implements ReviewService {
         return reviewOptional;
     }
 
+    @Cacheable(value = "review")
     @Override
     public List<Review> getReviews() {
         return reviewRepository.findAll();

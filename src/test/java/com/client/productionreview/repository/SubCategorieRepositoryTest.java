@@ -1,7 +1,7 @@
 package com.client.productionreview.repository;
 
-import com.client.productionreview.model.Category;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.Category;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import org.junit.jupiter.api.*;

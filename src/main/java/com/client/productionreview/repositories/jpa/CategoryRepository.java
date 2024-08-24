@@ -1,6 +1,6 @@
 package com.client.productionreview.repositories.jpa;
 
-import com.client.productionreview.model.Category;
+import com.client.productionreview.model.jpa.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

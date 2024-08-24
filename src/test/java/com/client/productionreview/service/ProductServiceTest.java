@@ -1,8 +1,8 @@
 package com.client.productionreview.service;
 
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Product;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.Product;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.impl.ProductServiceImpl;
@@ -21,7 +21,6 @@ import org.springframework.test.context.ActiveProfiles;
 
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Optional;
 

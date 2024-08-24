@@ -3,16 +3,18 @@ package com.client.productionreview.controller;
 import com.client.productionreview.controller.mapper.SubCategoryMapper;
 import com.client.productionreview.dtos.subCategory.SubCategoryResponseDTO;
 import com.client.productionreview.dtos.subCategory.SubCategoryRequestDTO;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.service.SubCategoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping( "/sub-categorie")
+@RequestMapping( "/api/v1/sub-categorie")
 public class SubCategoriaController {
 
 
@@ -27,6 +29,8 @@ public class SubCategoriaController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
     public SubCategoryResponseDTO add(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto){
         SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
         var subCategoriaModel = subCategoryService.addSubCategory(model);
@@ -36,6 +40,8 @@ public class SubCategoriaController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
     public SubCategoryResponseDTO update(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto, @PathVariable Long id){
         SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
         var subCategoriaModel = subCategoryService.updateSubCategory(model, id);
@@ -44,6 +50,8 @@ public class SubCategoriaController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @SecurityRequirement(name = "jwt_auth")
+    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
     public void delete(@PathVariable Long id) {
         subCategoryService.deleteSubCategory(id);
     }
