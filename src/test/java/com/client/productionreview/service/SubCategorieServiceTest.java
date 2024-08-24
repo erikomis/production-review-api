@@ -2,8 +2,8 @@ package com.client.productionreview.service;
 
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.Category;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.Category;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.impl.SubCategoryServiceImpl;

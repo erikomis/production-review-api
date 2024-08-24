@@ -3,8 +3,8 @@ package com.client.productionreview.service;
 
 import com.client.productionreview.exception.NotFoundException;
 
-import com.client.productionreview.model.Product;
-import com.client.productionreview.model.Review;
+import com.client.productionreview.model.jpa.Product;
+import com.client.productionreview.model.jpa.Review;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.service.impl.ReviewServiceImpl;

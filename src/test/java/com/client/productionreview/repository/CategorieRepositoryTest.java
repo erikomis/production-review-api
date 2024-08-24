@@ -1,7 +1,7 @@
 package com.client.productionreview.repository;
 
 
-import com.client.productionreview.model.Category;
+import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +43,6 @@ public class CategorieRepositoryTest {
         categorie.setDescription("description1");
         categorie.setSlug("slug1");
         categorie.setCreatedAt(LocalDateTime.now());
-        categorie.setSubCategoriaId(null);
         categories.add(categorie);
         Category categorie2 = new Category();
         categorie2.setName("categorie2");
