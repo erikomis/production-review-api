@@ -1,7 +1,7 @@
 package com.client.productionreview.service;
 
 
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.SubCategory;
 
 import java.util.List;
 
