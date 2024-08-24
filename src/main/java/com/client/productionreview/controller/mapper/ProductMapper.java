@@ -2,7 +2,7 @@ package com.client.productionreview.controller.mapper;
 
 import com.client.productionreview.dtos.product.ProductRequestDTO;
 import com.client.productionreview.dtos.product.ProductResponseDTO;
-import com.client.productionreview.model.Product;
+import com.client.productionreview.model.jpa.Product;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,7 +24,6 @@ public class ProductMapper {
         productResponseDTO.setSlug(product.getSlug());
         productResponseDTO.setDescription(product.getDescription());
         productResponseDTO.setSubCategorieId(product.getSubCategorieId());
-        productResponseDTO.setImageUrl(product.getImageUrl());
         return productResponseDTO;
     }
 }

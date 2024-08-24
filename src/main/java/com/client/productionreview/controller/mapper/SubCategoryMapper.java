@@ -2,7 +2,7 @@ package com.client.productionreview.controller.mapper;
 
 import com.client.productionreview.dtos.subCategory.SubCategoryRequestDTO;
 import com.client.productionreview.dtos.subCategory.SubCategoryResponseDTO;
-import com.client.productionreview.model.SubCategory;
+import com.client.productionreview.model.jpa.SubCategory;
 import org.springframework.stereotype.Component;
 
 @Component
