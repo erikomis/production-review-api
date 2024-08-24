@@ -1,4 +1,4 @@
-package com.client.productionreview.model;
+package com.client.productionreview.model.jpa;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
@@ -10,12 +10,14 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "categories")
+@Table(name = "category")
 @Entity
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Category {
@@ -30,12 +32,8 @@ public class Category {
 
 
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sub_categoria_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private SubCategory subCategoria;
-
-    @Column(name = "sub_categoria_id")
-    private Long subCategoriaId;
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List <SubCategory> subCategories;
 
     @CreationTimestamp
     @Column(name = "created_at")
