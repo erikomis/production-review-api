@@ -1,0 +1,35 @@
+name: testings
+on:
+  pull_request:
+    branches: ["main", "development"]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn clean verify
+
+      - name: Generate Jacoco Report
+        run: mvn jacoco:report
+
+      - name: Upload Jacoco Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: Jacoco Report
+          path: target/site/jacoco
+
+      - name: Test Report
+        uses: actions/upload-artifact@v3
+        if: success() || failure()
+        with:
+          name: SpringBoot Report
+          path: target/site/serenity/
