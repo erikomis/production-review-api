@@ -26,10 +26,10 @@ public class Product {
     private String slug;
 
     @OneToOne
-    @JoinColumn(name = "sub_categorie_id", referencedColumnName = "id", insertable = false, updatable = false)
+    @JoinColumn(name = "sub_category_id", referencedColumnName = "id", insertable = false, updatable = false)
     private SubCategory subCategorie;
 
-    @Column(name = "sub_categorie_id")
+    @Column(name = "sub_category_id")
     private Long subCategorieId;
 
 
