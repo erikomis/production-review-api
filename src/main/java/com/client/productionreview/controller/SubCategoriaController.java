@@ -30,7 +30,7 @@ public class SubCategoriaController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
     public SubCategoryResponseDTO add(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto){
         SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
         var subCategoriaModel = subCategoryService.addSubCategory(model);
@@ -41,7 +41,7 @@ public class SubCategoriaController {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
     public SubCategoryResponseDTO update(@Valid  @RequestBody SubCategoryRequestDTO subCategoriaDto, @PathVariable Long id){
         SubCategory model = subCategoryMapper.toModel(subCategoriaDto);
         var subCategoriaModel = subCategoryService.updateSubCategory(model, id);
@@ -51,7 +51,7 @@ public class SubCategoriaController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'DELETE_PRIVILEGES')")
     public void delete(@PathVariable Long id) {
         subCategoryService.deleteSubCategory(id);
     }
