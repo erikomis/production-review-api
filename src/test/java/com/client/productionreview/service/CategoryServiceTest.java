@@ -213,6 +213,7 @@ class CategoryServiceTest {
         category.setName("category");
         category.setDescription("description");
         category.setSlug("slug");
+        category.setSubCategories(List.of());
 
         when(categorieRepository.findAll()).thenReturn(List.of(category));
 
