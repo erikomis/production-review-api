@@ -1,23 +1,26 @@
-FROM ubuntu:latest AS build
-
-RUN apt-get update
-RUN apt-get install openjdk-17-jdk -y
-COPY . .
-
-RUN apt-get install maven -y
-RUN mvn clean install
-
-
+FROM maven:3.8.3-eclipse-temurin-17 AS build
+WORKDIR /app
+COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
 FROM eclipse-temurin:17
 
-WORKDIR /app
-RUN mvn clean package
-COPY target/production-review-0.0.1-SNAPSHOT.jar /app/production-review-0.0.1-SNAPSHOT.jar
+COPY --from=build /app/target/*.jar app.jar
 
 ENV TZ=America/Sao_Paulo
+ENV MAIL_USERNAME=TESTE
+ENV MAIL_PASSWORD=TESTE
+ENV SECRET=TESTE
+
+ENV SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/TESTE
+ENV SPRING_DATASOURCE_USERNAME=TESTE
+ENV SPRING_DATASOURCE_PASSWORD=TESTE
+
+ENV URL=TESTE
+ENV ACESS_NAME=TESTE
+ENV ACESS_SECREY=TESTE
 
 EXPOSE 8084
 
-ENTRYPOINT ["java", "-jar", "/app/production-review-0.0.1-SNAPSHOT.jar"]
-
+ENTRYPOINT ["java", "-jar", "/app.jar"]
