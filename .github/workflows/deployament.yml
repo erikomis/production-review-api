@@ -1,0 +1,60 @@
+name: deployment
+on:
+  push:
+    branches: [ "main" ]
+
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Copy files to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "."
+          target: "api"
+
+      - name: Deploy Docker image on VPS
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ./api
+            
+             if [ ! -f .env ]; then
+            echo ".env file does not exist. Creating it..."
+            echo "TZ=${{ secrets.ENV_TZ }}" > .env
+            echo "MAIL_USERNAME=${{ secrets.ENV_MAIL_USERNAME }}" >> .env
+            echo "MAIL_PASSWORD=${{ secrets.ENV_MAIL_PASSWORD }}" >> .env
+            echo "SECRET=${{ secrets.ENV_SECRET }}" >> .env
+            echo "SPRING_DATASOURCE_URL=${{ secrets.ENV_SPRING_DATASOURCE_URL }}" >> .env
+            echo "SPRING_DATASOURCE_USERNAME=${{ secrets.ENV_SPRING_DATASOURCE_USERNAME }}" >> .env
+            echo "SPRING_DATASOURCE_PASSWORD=${{ secrets.ENV_SPRING_DATASOURCE_PASSWORD }}" >> .env
+            echo "DATABASE_NAME=${{ secrets.ENV_DATABASE_NAME }}" >> .env
+            echo "URL=${{ secrets.ENV_URL }}" >> .env
+            echo "ACESS_NAME=${{ secrets.ENV_ACESS_NAME }}" >> .env
+            echo "ACESS_SECREY=${{ secrets.ENV_ACESS_SECREY }}" >> .env
+            echo "MINIO_ROOT_USER=${{ secrets.ENV_MINIO_ROOT_USER }}" >> .env
+            echo "MINIO_ROOT_PASSWORD=${{ secrets.ENV_MINIO_ROOT_PASSWORD }}" >> .env
+            else
+              echo ".env file already exists."
+            fi
+            docker-compose down
+            
+              # Constrói a imagem Docker
+              docker-compose build
+            
+              # Executa o Docker Compose
+                docker-compose up -d
