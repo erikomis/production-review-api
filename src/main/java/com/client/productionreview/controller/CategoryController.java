@@ -28,7 +28,7 @@ public class CategoryController {
     @PostMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
     public CategoryResponseDTO addCatogory(@RequestBody CategoryRequestDTO categorie){
         Category model = categorieMapper.toModel(categorie);
         var categorieModel = categorieService.addCatogory(model);
@@ -38,14 +38,14 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
     public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @RequestBody CategoryRequestDTO categorioDto) {
         Category model = categorieMapper.toModel(categorioDto);
         var categorieModel = categorieService.updateCatogory(model, id);
         return  categorieMapper.toDTO(categorieModel);
     }
 
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'DELETE_PRIVILEGES')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCatogory(@PathVariable("id") Long id) {

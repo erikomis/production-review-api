@@ -1,5 +1,8 @@
 package com.client.productionreview.model.jpa;
 
+import com.client.productionreview.config.RoleGrantedAuthority;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Entity
 @Table(name = "user")
@@ -18,6 +22,8 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User implements UserDetails {
 
 
@@ -36,7 +42,8 @@ public class User implements UserDetails {
 
     private String password;
 
-    private Boolean Active;
+    @Column(name = "active")
+    private Boolean active;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -44,6 +51,7 @@ public class User implements UserDetails {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id" , referencedColumnName = "id")
     )
+    @Builder.Default
     private Collection<Role> roles = new HashSet<>();
 
     @Override
@@ -57,16 +65,35 @@ public class User implements UserDetails {
 //                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
 //                .collect(Collectors.toList());
 
-        Set<GrantedAuthority> authorities = roles.stream()
-                .map(role -> new SimpleGrantedAuthority(role.getName()))
-                .collect(Collectors.toSet());
 
-        authorities.addAll(roles.stream()
-                .flatMap(role -> role.getPermissions().stream())
-                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
-                .collect(Collectors.toSet()));
-        System.out.println("authorities = " + authorities);
+//        List<Role> aa = roles.stream().collect(Collectors.toList());
+//
+//        System.out.println("aa = " + aa);
+//        Set<GrantedAuthority> authorities = roles.stream()
+//                .map(role -> new SimpleGrantedAuthority("ROLE_"+role.getName()))
+//                .collect(Collectors.toSet());
+//
+//        authorities.addAll(roles.stream()
+//                .flatMap(role -> role.getPermissions().stream())
+//                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
+//                .collect(Collectors.toSet()));
+
+        //System.out.println("authorities = " + authorities + " roles = " + roles);
+        List<GrantedAuthority> authorities = roles.stream()
+                .flatMap(role -> {
+                    // Mapeia a role como uma autoridade
+                    Stream<GrantedAuthority> roleAuthority = Stream.of(new RoleGrantedAuthority(role));
+
+                    // Mapeia as permissões como autoridades
+                    Stream<GrantedAuthority> permissionAuthorities = role.getPermissions().stream()
+                            .map(permission -> new SimpleGrantedAuthority(permission.getName()));
+
+                    return roleAuthority;
+                })
+                .collect(Collectors.toList());
+       // System.out.println("authorities = " + authorities);
         return authorities;
+
     }
     @Override
     public boolean isAccountNonExpired() {

@@ -1,3 +1,4 @@
+CREATE DATABASE IF NOT EXISTS production;
 use production;
 CREATE TABLE IF NOT EXISTS user (
                                     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -57,7 +58,7 @@ CREATE TABLE IF NOT EXISTS sub_category (
                                             category_id BIGINT NOT NULL,
                                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                                             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                                            FOREIGN KEY (category_id) REFERENCES category(id)
+                                            FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS product (

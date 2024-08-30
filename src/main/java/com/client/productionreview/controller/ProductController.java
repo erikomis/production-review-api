@@ -38,7 +38,7 @@ public class ProductController {
     )
     @ResponseStatus(HttpStatus.CREATED)
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('WRITE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
     public ProductResponseDTO addProduct(
             @Valid @RequestBody ProductRequestDTO productRequestDTO) {
         Product model = productMapper.toModel(productRequestDTO);
@@ -50,11 +50,11 @@ public class ProductController {
 
     @GetMapping( "/list")
     @ResponseStatus(HttpStatus.OK)
-    public Page<Product> listProductions(@RequestParam("page") Integer page, @RequestParam("size")
+    public Page<Product> listProductions(@RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "size", required = false)
             Integer size, @RequestParam(value = "sort",
             required = false) Sort.Direction sort, @RequestParam(value = "property", required = false)
             String property, @RequestParam(value = "search", required = false) String search) {
-        Pageable pageable = PaginationUtils.createPageable(page, size, property, Objects.requireNonNull(sort).name());
+        Pageable pageable = PaginationUtils.createPageable(page, size, property,sort != null ? sort.name() : null);
         return productService.getAllProduct(pageable, search);
 
     }
@@ -62,7 +62,7 @@ public class ProductController {
 
     @PutMapping( value = "/update/{id}")
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('UPDATE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
     @ResponseStatus(HttpStatus.OK)
     public ProductResponseDTO updateProduction(
             @PathVariable("id") Long id,
@@ -74,7 +74,7 @@ public class ProductController {
     }
 
     @SecurityRequirement(name = "jwt_auth")
-    @PreAuthorize("hasAuthority('ADMIN') and hasAuthority('DELETE_PRIVILEGES')")
+    @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'DELETE_PRIVILEGES')")
     @DeleteMapping( "/delete/{id}")
     public ResponseEntity<?> deleteProduction(@PathVariable() Long id) {
         productService.deleteProduct(id);

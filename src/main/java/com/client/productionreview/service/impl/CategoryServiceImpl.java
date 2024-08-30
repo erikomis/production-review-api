@@ -8,6 +8,7 @@ import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.service.CategoryService;
 
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +40,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @CacheEvict(value = "category", allEntries = true, key = "#id")
+    @CachePut(value = "category", key = "#id")
     public Category updateCatogory(Category category, Long id) {
        Optional<Category> categoryExist = categoryRepository.findById(id);
         if(categoryExist.isEmpty()){
@@ -87,7 +88,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Cacheable(value = "category" )
     public List<Category> getAllCatogories() {
-        return categoryRepository.findAll();
+        List<Category> categories = categoryRepository.findAll();
+
+        for (Category category : categories) {
+            category.getSubCategories().size();
+        }
+        return categories;
     }
 
 
