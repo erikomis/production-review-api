@@ -13,5 +13,5 @@ public interface UserRecoveryCodeRepository extends CrudRepository<UserRecoveryC
 
     Optional<UserRecoveryCode> findByEmail(String email);
 
-    Optional<UserRecoveryCode> findByRecoveryCode(String recoveryCode);
+    Optional<UserRecoveryCode> findByCode(String code);
 }
