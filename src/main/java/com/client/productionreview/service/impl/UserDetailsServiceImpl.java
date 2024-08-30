@@ -15,6 +15,7 @@ import com.client.productionreview.repositories.jpa.RoleRepository;
 import com.client.productionreview.repositories.jpa.UserRepository;
 import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository;
 import com.client.productionreview.service.UserDetailsService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -66,13 +67,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new NotFoundException("Senha ou usuário inválido");
         }
 
-        System.out.println("User: " + user.getAuthorities());
 
         return AutoSignInDTOResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .username(user.getUsername())
-                .email(user.getEmail())
                 .token(jwtProvider.generateToken(user.getId()))
                 .refreshToken(jwtProvider.generateRefreshToken(user.getId()))
                 .build();
@@ -91,13 +87,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Role userRole = roleRepository.findByName("USER")
                 .orElseThrow(() -> new NotFoundException("Role não encontrada"));
 
-        User user = User.builder()
-                .username(authSignUpDTORequest.getUsername())
-                .name(authSignUpDTORequest.getName())
-                .email(authSignUpDTORequest.getEmail())
-                .password(passwordEncoder.encode(authSignUpDTORequest.getPassword()))
-                .roles(Collections.singletonList(userRole))
-                .build();
+
+
+        User user = new User();
+        user.setUsername(authSignUpDTORequest.getUsername());
+        user.setName(authSignUpDTORequest.getName());
+        user.setEmail(authSignUpDTORequest.getEmail());
+        user.setPassword(passwordEncoder.encode(authSignUpDTORequest.getPassword()));
+        user.setActive(false);
+        user.setRoles(Collections.singletonList(userRole));
+
 
 
         userRepository.save(user);
@@ -118,7 +117,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         userRecoveryCodeRepository.save(UserRecoveryCode.builder().email(user.getEmail()).code(token).build());
 
-        mailIntegration.send(user.getEmail(), body, "Seja bem vindo ao sistema");
+        mailIntegration.send(user.getEmail(), body, subject);
 
 
     }
@@ -201,7 +200,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public void activeUserByRecoveryCode(String recoveryCode) {
 
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByRecoveryCode(recoveryCode);
+        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByCode(recoveryCode);
 
         if (userRecoveryCodeOpt.isEmpty()) {
             throw new NotFoundException("Código de recuperação inválido");
@@ -221,6 +220,34 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         userRepository.save(userCredentials);
 
+    }
+
+    @Override
+    public AutoSignInDTOResponse refreshToken(HttpServletRequest request) {
+
+
+        var token = jwtProvider.getRefreshTokenFromCookie(request);
+        if (token == null) {
+            throw new BadRequestException("Token inválido");
+        }
+        
+        var jwt = jwtProvider.isValidRefreshToken(token);
+
+        if (!jwt) {
+            throw new BadRequestException("Token inválido");
+        }
+
+        var idUser = jwtProvider.getUserIdFromRefreshToken(token);
+
+
+       jwtProvider.cleanToken();
+       jwtProvider.cleanRefreshToken();
+
+
+        return AutoSignInDTOResponse.builder()
+                .token(jwtProvider.generateToken(idUser))
+                .refreshToken(jwtProvider.generateRefreshToken(idUser))
+                .build();
     }
 
 
