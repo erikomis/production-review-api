@@ -1,10 +1,9 @@
 package com.client.productionreview.model.jpa;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -13,8 +12,11 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+
 @Entity
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@ToString(exclude = "users")
 public class Role {
 
     @Id
@@ -24,7 +26,7 @@ public class Role {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @ManyToMany(mappedBy = "roles")
+    @ManyToMany(mappedBy = "roles", fetch = FetchType.EAGER)
     private Collection<User> users;
 
 
