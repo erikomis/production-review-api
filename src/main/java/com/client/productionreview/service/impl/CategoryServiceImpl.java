@@ -90,9 +90,8 @@ public class CategoryServiceImpl implements CategoryService {
     public List<Category> getAllCatogories() {
         List<Category> categories = categoryRepository.findAll();
 
-        // Garantir que todas as subcategorias sejam carregadas para evitar LazyInitializationException
         for (Category category : categories) {
-            category.getSubCategories().size();  // Força o carregamento das subcategorias
+            category.getSubCategories().size();
         }
         return categories;
     }
