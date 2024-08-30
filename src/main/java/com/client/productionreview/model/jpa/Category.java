@@ -1,5 +1,6 @@
 package com.client.productionreview.model.jpa;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -9,9 +10,10 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+
 
 @Data
 @NoArgsConstructor
@@ -20,7 +22,9 @@ import java.util.Set;
 @Table(name = "category")
 @Entity
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class Category {
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler",})
+
+public class Category implements Serializable {
 
 
     @Id
@@ -30,9 +34,8 @@ public class Category {
     private String description;
     private String slug;
 
-
-
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnoreProperties("category")
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.LAZY)
     private List <SubCategory> subCategories;
 
     @CreationTimestamp
