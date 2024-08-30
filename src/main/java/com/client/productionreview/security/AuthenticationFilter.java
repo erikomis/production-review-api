@@ -31,7 +31,8 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        String token = getBearerToken(request);
+        var token = jwtProvider.getTokenFromCookie(request);
+        System.out.println("Token: " + token);
         if (Objects.nonNull(token)) {
             authByToken(token);
         }
@@ -42,7 +43,6 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
 
     private void authByToken(String token) {
         var tokenOpt = jwtProvider.validateToken(token);
-
         if (tokenOpt == null) {
              throw new NotFoundException("Token inválido");
         }
@@ -68,18 +68,6 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
 
 
 
-
-
-
-    private String getBearerToken(HttpServletRequest request) {
-
-        String token = request.getHeader("Authorization");
-        if (Objects.isNull(token) || !token.startsWith("Bearer")) {
-            return null;
-        }
-
-        return token.substring(7);
-    }
 
 
 

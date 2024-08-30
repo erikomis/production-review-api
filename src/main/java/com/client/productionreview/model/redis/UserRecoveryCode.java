@@ -25,6 +25,7 @@ public class UserRecoveryCode {
     @Email
     private String email;
 
+    @Indexed
     private String code;
 
     private LocalDateTime createdDate = LocalDateTime.now();

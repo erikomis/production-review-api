@@ -3,6 +3,7 @@ package com.client.productionreview.dtos.auth;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,6 +28,6 @@ public class AuthSignUpDTORequest {
     private String username;
 
     @NotBlank(message = "O campo password é obrigatório")
-    @Max(value = 20, message = "A senha deve ter no máximo 20 caracteres")
+    @Size(min = 3 , max = 20, message = "A senha deve ter entre 3 e 20 caracteres")
     private String password;
 }

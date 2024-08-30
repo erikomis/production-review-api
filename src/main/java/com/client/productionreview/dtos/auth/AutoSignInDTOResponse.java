@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.http.ResponseCookie;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -12,20 +13,11 @@ import lombok.NoArgsConstructor;
 public class AutoSignInDTOResponse {
 
 
-    private Long id;
-
-    private String name;
-
-    private String username;
-
-    private String email;
 
 
-    private String token;
 
-    private String type;
-
-    private String refreshToken;
+    private ResponseCookie token;
+    private ResponseCookie refreshToken;
 
 
 
