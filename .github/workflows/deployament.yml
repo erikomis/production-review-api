@@ -51,7 +51,6 @@ jobs:
               echo ".env file already exists."
             fi
             
-            
-            docker-compose down
             docker-compose build
+            docker-compose down
             docker-compose up -d
