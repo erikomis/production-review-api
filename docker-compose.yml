@@ -10,7 +10,7 @@ volumes:
   grafana_data:
   banco:
   redis_data:
-  minio_data:
+  minio_data: {}
 
 services:
   db:
@@ -50,23 +50,6 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-  minio:
-    container_name: minio
-    image: minio/minio:latest
-    networks:
-      - gv-network
-      - web-network
-    env_file:
-      - .env
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL}
-      MINIO_SERVER_URL: ${MINIO_SERVER_URL}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    restart: unless-stopped
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
