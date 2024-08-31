@@ -32,8 +32,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ./api
-            
-             if [ ! -f .env ]; then
+            if [ ! -f .env ]; then
             echo ".env file does not exist. Creating it..."
             echo "TZ=${{ secrets.ENV_TZ }}" > .env
             echo "MAIL_USERNAME=${{ secrets.ENV_MAIL_USERNAME }}" >> .env
@@ -51,10 +50,8 @@ jobs:
             else
               echo ".env file already exists."
             fi
+            
+            
             docker-compose down
-            
-              # Constrói a imagem Docker
-              docker-compose build
-            
-              # Executa o Docker Compose
-                docker-compose up -d
+            docker-compose build
+            docker-compose up -d
