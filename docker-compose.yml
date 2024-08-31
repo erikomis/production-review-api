@@ -12,7 +12,6 @@ volumes:
   redis_data:
   minio_data:
 
-
 services:
   db:
     container_name: db
@@ -21,6 +20,8 @@ services:
       - "3306:3306"
     networks:
       - gv-network
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       MYSQL_DATABASE: ${DATABASE_NAME}
@@ -29,22 +30,22 @@ services:
     volumes:
       - banco:/var/lib/mysql
   web:
-      container_name: web
-      build: .
-      networks:
-        - web-network
-        - gv-network
-      ports:
-        - "8084:8084"
-      env_file:
-        - .env
-      depends_on:
-        - db
+    container_name: web
+    build: .
+    networks:
+      - web-network
+      - gv-network
+    ports:
+      - "8084:8084"
+    env_file:
+      - .env
+    depends_on:
+      - db
   redis:
     container_name: redis
     image: redis:6.2
     networks:
-        - gv-network
+      - gv-network
     ports:
       - "6379:6379"
     volumes:
@@ -58,13 +59,15 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    env_file:
+      - .env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
-    restart: unless-stopped 
+    restart: unless-stopped
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
