@@ -56,14 +56,13 @@ services:
     networks:
       - gv-network
       - web-network
-    ports:
-      - "9000:9000"
-      - "9001:9001"
     env_file:
       - .env
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL}
+      MINIO_SERVER_URL: ${MINIO_SERVER_URL}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
