@@ -24,9 +24,9 @@ jobs:
       - name: Build and push frontend Docker image
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}:client"
+          context: "{{defaultContext}}"
           push: true
-          tags: user/app:{{ github.ref }}
+          tags:  ${{ secrets.DOCKER_USERNAME }}/production-review:latest, ${{ secrets.DOCKER_USERNAME }}/production-review:${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Deploy to vps
