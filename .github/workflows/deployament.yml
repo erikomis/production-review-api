@@ -30,7 +30,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Deploy to vps
-        uses: appleboy/ssh-action@
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
