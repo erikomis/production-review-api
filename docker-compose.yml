@@ -1,37 +1,21 @@
 version: "3.8"
 
+
 networks:
   web-network:
     name: web-network
   gv-network:
     driver: bridge
+
+
 volumes:
-  prometheus_data:
-  grafana_data:
-  banco:
-  redis_data:
-  minio_data: {}
+    prometheus_data:
+    grafana_data:
 
 services:
-  db:
-    container_name: db
-    image: mariadb:11.3
-    ports:
-      - "3306:3306"
-    networks:
-      - gv-network
-    env_file:
-      - .env
-    environment:
-      MYSQL_ROOT_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      MYSQL_DATABASE: ${DATABASE_NAME}
-      MYSQL_USER: ${SPRING_DATASOURCE_USERNAME}
-      MYSQL_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-    volumes:
-      - banco:/var/lib/mysql
   web:
     container_name: web
-    build: .
+    image: martinsozzs/production-review:latest
     networks:
       - web-network
       - gv-network
@@ -39,17 +23,6 @@ services:
       - "8084:8084"
     env_file:
       - .env
-    depends_on:
-      - db
-  redis:
-    container_name: redis
-    image: redis:6.2
-    networks:
-      - gv-network
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
