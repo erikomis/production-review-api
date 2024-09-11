@@ -76,7 +76,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public void signUp(AuthSignUpDTORequest authSignUpDTORequest) {
+    public void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin) {
 
         Optional<User> exists = userRepository.findByUsernameOrEmail(authSignUpDTORequest.getUsername(), authSignUpDTORequest.getEmail());
 
@@ -105,7 +105,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         String subject = "Confirme seu e-mail para ativar sua conta";
         String token = UUID.randomUUID().toString();
 
-        String confirmationLink = "https://seu-dominio.com/activate?token=" + token;
+        String confirmationLink = origin  + "/activate-account/" + token;
 
         String body = "Olá " + user.getUsername() + ",\n\n"
                 + "Obrigado por se registrar no nosso sistema! Para ativar sua conta, por favor, confirme seu e-mail clicando no link abaixo:\n\n"
@@ -248,6 +248,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .token(jwtProvider.generateToken(idUser))
                 .refreshToken(jwtProvider.generateRefreshToken(idUser))
                 .build();
+    }
+
+
+    @Override
+    public void logout(HttpServletRequest request) {
+        jwtProvider.cleanToken();
+        jwtProvider.cleanRefreshToken();
     }
 
 
