@@ -11,7 +11,7 @@ public interface UserDetailsService {
 
     AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest);
 
-    void signUp(AuthSignUpDTORequest authSignUpDTORequest);
+    void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin);
 
     void sendRecoveryCode(String email);
 
@@ -22,6 +22,8 @@ public interface UserDetailsService {
     void activeUserByRecoveryCode(String recoveryCode);
 
     AutoSignInDTOResponse refreshToken(HttpServletRequest request);
+
+    void logout(HttpServletRequest request);
 }
 
 
