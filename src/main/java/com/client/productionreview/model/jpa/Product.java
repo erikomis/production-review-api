@@ -9,6 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -31,6 +32,10 @@ public class Product {
 
     @Column(name = "sub_category_id")
     private Long subCategorieId;
+
+    @OneToMany(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", referencedColumnName = "id", insertable = false, updatable = false)
+    private List<ProductImage> productImages;
 
 
     @CreationTimestamp
