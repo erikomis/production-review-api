@@ -17,14 +17,12 @@ import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -250,11 +248,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .build();
     }
 
-
     @Override
-    public void logout(HttpServletRequest request) {
-        jwtProvider.cleanToken();
-        jwtProvider.cleanRefreshToken();
+    public Map<String, ResponseCookie> logout() {
+        var token =   jwtProvider.cleanToken();
+        var  refreshToken =  jwtProvider.cleanRefreshToken();
+
+        Map<String,
+                ResponseCookie> response = new HashMap<>();
+        response.put("token", token);
+        response.put("refreshToken", refreshToken);
+
+        return response;
+
     }
 
 
