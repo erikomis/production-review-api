@@ -1,11 +1,10 @@
 package com.client.productionreview.exception.handler;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.client.productionreview.dtos.error.ErrorResponseDto;
-import com.client.productionreview.exception.BadRequestException;
-import com.client.productionreview.exception.BusinessExcepion;
-import com.client.productionreview.exception.IoFileException;
-import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.exception.*;
 
+import io.minio.errors.MinioException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +23,41 @@ import java.util.Map;
 @RestControllerAdvice
 public class ResourceHandler {
 
+
+
+
+    @ExceptionHandler(GlobalException.class)
+    public ResponseEntity<ErrorResponseDto> handleGlobal(GlobalException e) {
+        String errorMessage = e.getMensage();
+        HttpStatus errorCode = e.getHttpStatus() != null ? e.getHttpStatus() : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(errorCode).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(errorCode)
+                .statusCode(errorCode.value())
+                .build());
+    }
+
+
+    @ExceptionHandler(MinioException.class)
+    public ResponseEntity<ErrorResponseDto> handleMinioException(MinioException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build());
+    }
+
+
+   @ExceptionHandler(IOException.class)
+    public ResponseEntity<ErrorResponseDto> handleIOException(IOException e) {
+        String errorMessage = e.getMessage();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ErrorResponseDto.builder()
+                .message(errorMessage)
+                .httpStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .build());
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponseDto> handleNotFoundException(NotFoundException e) {
@@ -67,17 +102,10 @@ public class ResourceHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDto> handleNotFoudException(MethodArgumentNotValidException e) {
-//        String errorMenssage = e.getMessage();
-//        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ErrorResponseDto.builder()
-//                .message(errorMenssage)
-//                .httpStatus(HttpStatus.NOT_FOUND)
-//                .statusCode(HttpStatus.NOT_FOUND.value())
-//                .build());
-
         Map<String, String> errors = new HashMap<>();
 
         e.getBindingResult().getFieldErrors().forEach(error -> {
-            String field = ((FieldError) error).getField();
+            String field = error.getField();
             String errorMessage = error.getDefaultMessage();
             errors.put(field, errorMessage);
         });
