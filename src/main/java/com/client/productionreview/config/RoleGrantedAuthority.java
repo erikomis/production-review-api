@@ -20,7 +20,6 @@ public class RoleGrantedAuthority implements GrantedAuthority {
     }
 
     public boolean hasPermission(String name) {
-        System.out.println("RoleGrantedAuthority: " + role.getPermissions());
         return role.getPermissions().stream()
                 .map(Permission::getName)
                 .collect(Collectors.toSet())
