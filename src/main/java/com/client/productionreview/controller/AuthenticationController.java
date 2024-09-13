@@ -57,7 +57,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/send-recovery-code/send")
-    public ResponseEntity<?> sendRecoveryCode(@Valid @RequestBody String email) {
+    public ResponseEntity<?> sendRecoveryCode(@Valid @RequestBody ForgotPasswordRequest email) {
         userService.sendRecoveryCode(email);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
     }
