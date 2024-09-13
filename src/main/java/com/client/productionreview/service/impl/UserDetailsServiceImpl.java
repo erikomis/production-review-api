@@ -1,9 +1,6 @@
 package com.client.productionreview.service.impl;
 
-import com.client.productionreview.dtos.auth.AuthSignInDTORequest;
-import com.client.productionreview.dtos.auth.AuthSignUpDTORequest;
-import com.client.productionreview.dtos.auth.AuthUpdatePasswordDTORequest;
-import com.client.productionreview.dtos.auth.AutoSignInDTOResponse;
+import com.client.productionreview.dtos.auth.*;
 import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
@@ -17,14 +14,12 @@ import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
@@ -76,7 +71,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public void signUp(AuthSignUpDTORequest authSignUpDTORequest) {
+    public void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin) {
 
         Optional<User> exists = userRepository.findByUsernameOrEmail(authSignUpDTORequest.getUsername(), authSignUpDTORequest.getEmail());
 
@@ -105,7 +100,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         String subject = "Confirme seu e-mail para ativar sua conta";
         String token = UUID.randomUUID().toString();
 
-        String confirmationLink = "https://seu-dominio.com/activate?token=" + token;
+        String confirmationLink = origin  + "/activate-account/" + token;
 
         String body = "Olá " + user.getUsername() + ",\n\n"
                 + "Obrigado por se registrar no nosso sistema! Para ativar sua conta, por favor, confirme seu e-mail clicando no link abaixo:\n\n"
@@ -123,22 +118,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public void sendRecoveryCode(String email) {
-
+    public void sendRecoveryCode(ForgotPasswordRequest email) {
+        System.out.println(email);
         UserRecoveryCode userRecoveryCode;
         String code = String.format("%04d", new Random().nextInt(10000));
 
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email);
+        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email.getEmail());
 
         if (userRecoveryCodeOpt.isEmpty()) {
-            var userDetailOpt = userRepository.findByEmail(email);
+            var userDetailOpt = userRepository.findByEmail(email.getEmail());
 
             if (userDetailOpt.isEmpty()) {
                 throw new NotFoundException("Usuário não encontrado");
             }
 
             userRecoveryCode = new UserRecoveryCode();
-            userRecoveryCode.setEmail(email);
+            userRecoveryCode.setEmail(email.getEmail());
 
         } else {
             userRecoveryCode = userRecoveryCodeOpt.get();
@@ -149,7 +144,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         userRecoveryCodeRepository.save(userRecoveryCode);
 
-        mailIntegration.send(email, "Seu código de recuperação é: " + code, "Código de recuperação");
+        mailIntegration.send(email.getEmail(), "Seu código de recuperação é: " + code, "Código de recuperação");
 
 
     }
@@ -248,6 +243,20 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .token(jwtProvider.generateToken(idUser))
                 .refreshToken(jwtProvider.generateRefreshToken(idUser))
                 .build();
+    }
+
+    @Override
+    public Map<String, ResponseCookie> logout() {
+        var token =   jwtProvider.cleanToken();
+        var  refreshToken =  jwtProvider.cleanRefreshToken();
+
+        Map<String,
+                ResponseCookie> response = new HashMap<>();
+        response.put("token", token);
+        response.put("refreshToken", refreshToken);
+
+        return response;
+
     }
 
 

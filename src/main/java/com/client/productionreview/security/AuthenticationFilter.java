@@ -32,8 +32,8 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         var token = jwtProvider.getTokenFromCookie(request);
-        System.out.println("Token: " + token);
-        if (Objects.nonNull(token)) {
+        if (token != null && jwtProvider.validateToken(token) != null) {
+
             authByToken(token);
         }
         filterChain.doFilter(request, response);
@@ -47,8 +47,6 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
              throw new NotFoundException("Token inválido");
         }
 
-
-        //recuperar id do usuario
         Long userId = jwtProvider.getUserId(token);
         var userOpt = userRepository.findById(userId);
 
@@ -57,7 +55,7 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
         }
 
         User userCredentials = userOpt.get();
-        //autenticar no spring
+
 
         UsernamePasswordAuthenticationToken userAuth
                 = new UsernamePasswordAuthenticationToken(userCredentials, null, userCredentials.getAuthorities());

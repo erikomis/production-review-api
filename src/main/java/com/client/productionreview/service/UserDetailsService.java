@@ -3,6 +3,9 @@ package com.client.productionreview.service;
 import com.client.productionreview.dtos.auth.*;
 import com.client.productionreview.model.jpa.User;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.ResponseCookie;
+
+import java.util.Map;
 
 
 public interface UserDetailsService {
@@ -11,9 +14,9 @@ public interface UserDetailsService {
 
     AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest);
 
-    void signUp(AuthSignUpDTORequest authSignUpDTORequest);
+    void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin);
 
-    void sendRecoveryCode(String email);
+    void sendRecoveryCode(ForgotPasswordRequest email);
 
     boolean recoveryCodeIsValid(String recoveryCode, String email);
 
@@ -22,6 +25,7 @@ public interface UserDetailsService {
     void activeUserByRecoveryCode(String recoveryCode);
 
     AutoSignInDTOResponse refreshToken(HttpServletRequest request);
+     Map<String, ResponseCookie> logout ();
 }
 
 

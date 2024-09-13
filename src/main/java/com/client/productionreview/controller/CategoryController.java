@@ -7,6 +7,7 @@ import com.client.productionreview.dtos.category.CategoryResponseDTO;
 import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.service.CategoryService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,7 +30,7 @@ public class CategoryController {
     @ResponseStatus(HttpStatus.CREATED)
     @SecurityRequirement(name = "jwt_auth")
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
-    public CategoryResponseDTO addCatogory(@RequestBody CategoryRequestDTO categorie){
+    public CategoryResponseDTO addCatogory( @Valid @RequestBody CategoryRequestDTO categorie){
         Category model = categorieMapper.toModel(categorie);
         var categorieModel = categorieService.addCatogory(model);
         return  categorieMapper.toDTO(categorieModel);
@@ -60,7 +61,7 @@ public class CategoryController {
 
     }
 
-    @GetMapping
+    @GetMapping("/list")
     @ResponseStatus(HttpStatus.OK)
     public List<Category> getAllCatogories() {
         return  categorieService.getAllCatogories();

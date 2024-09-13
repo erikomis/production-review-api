@@ -2,40 +2,36 @@ package com.client.productionreview.model.jpa;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+@Entity
+@Table(name = "product_image")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@Entity
-@Table(name = "product")
-public class Product {
+public class ProductImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
-    private String description;
-    private String slug;
 
-    @OneToOne
-    @JoinColumn(name = "sub_category_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private SubCategory subCategorie;
+    @Column(name = "product_id")
+    private Long productId;
 
-    @Column(name = "sub_category_id")
-    private Long subCategorieId;
 
-    @OneToMany(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private List<ProductImage> productImages;
+    @Column(name = "image")
+    private String urlImage;
+
+
+    private String type;
+
+
+    private String filename;
 
 
     @CreationTimestamp
@@ -45,9 +41,6 @@ public class Product {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private  LocalDateTime updatedAt;
+
+
 }
-
-
-
-
-

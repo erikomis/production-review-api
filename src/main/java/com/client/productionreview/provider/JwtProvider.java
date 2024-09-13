@@ -6,7 +6,6 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.WebUtils;
@@ -53,7 +52,7 @@ public class JwtProvider {
             return tokenDecoded;
         } catch (JWTVerificationException ex) {
             ex.printStackTrace();
-            return null;
+           return null;
         }
     }
 

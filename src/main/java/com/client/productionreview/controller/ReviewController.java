@@ -4,10 +4,14 @@ import com.client.productionreview.controller.mapper.ReviewMapper;
 import com.client.productionreview.dtos.review.ReviewRequestDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.model.jpa.Review;
+import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.service.ReviewService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
 
 import java.util.List;
 
@@ -27,8 +31,12 @@ public class ReviewController {
 
     @PostMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
-    public ReviewResponseDTO createReview(@Valid @RequestBody ReviewRequestDTO requestDTO) {
-        return reviewMapper.toDTO(reviewService.saveReview(reviewMapper.toModel(requestDTO)));
+    public ReviewResponseDTO createReview(@Valid @RequestBody ReviewRequestDTO requestDTO ) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        User user = (User) authentication.getPrincipal();
+
+        return reviewMapper.toDTO(reviewService.saveReview(reviewMapper.toModel(requestDTO), user.getName()));
 
     }
 
@@ -51,7 +59,7 @@ public class ReviewController {
     }
 
 
- @GetMapping("/")
+ @GetMapping("/list")
     public List<Review> getReviews() {
         return reviewService.getReviews();
     }
