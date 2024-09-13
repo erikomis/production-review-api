@@ -16,7 +16,7 @@ public interface UserDetailsService {
 
     void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin);
 
-    void sendRecoveryCode(String email);
+    void sendRecoveryCode(ForgotPasswordRequest email);
 
     boolean recoveryCodeIsValid(String recoveryCode, String email);
 

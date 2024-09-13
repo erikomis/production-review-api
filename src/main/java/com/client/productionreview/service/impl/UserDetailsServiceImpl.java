@@ -1,9 +1,6 @@
 package com.client.productionreview.service.impl;
 
-import com.client.productionreview.dtos.auth.AuthSignInDTORequest;
-import com.client.productionreview.dtos.auth.AuthSignUpDTORequest;
-import com.client.productionreview.dtos.auth.AuthUpdatePasswordDTORequest;
-import com.client.productionreview.dtos.auth.AutoSignInDTOResponse;
+import com.client.productionreview.dtos.auth.*;
 import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
@@ -121,22 +118,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public void sendRecoveryCode(String email) {
-
+    public void sendRecoveryCode(ForgotPasswordRequest email) {
+        System.out.println(email);
         UserRecoveryCode userRecoveryCode;
         String code = String.format("%04d", new Random().nextInt(10000));
 
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email);
+        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email.getEmail());
 
         if (userRecoveryCodeOpt.isEmpty()) {
-            var userDetailOpt = userRepository.findByEmail(email);
+            var userDetailOpt = userRepository.findByEmail(email.getEmail());
 
             if (userDetailOpt.isEmpty()) {
                 throw new NotFoundException("Usuário não encontrado");
             }
 
             userRecoveryCode = new UserRecoveryCode();
-            userRecoveryCode.setEmail(email);
+            userRecoveryCode.setEmail(email.getEmail());
 
         } else {
             userRecoveryCode = userRecoveryCodeOpt.get();
@@ -147,7 +144,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         userRecoveryCodeRepository.save(userRecoveryCode);
 
-        mailIntegration.send(email, "Seu código de recuperação é: " + code, "Código de recuperação");
+        mailIntegration.send(email.getEmail(), "Seu código de recuperação é: " + code, "Código de recuperação");
 
 
     }
