@@ -58,7 +58,7 @@ public class CategoryControllerTest {
         // When & Then
         mockMvc.perform(MockMvcRequestBuilders.post("/api/v1/category/")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{ \"name\": \"Electronics\" }"))
+                        .content("{ \"name\": \"Electronics\", \"description\": \"Electronic devices\", \"slug\": \"electronics\" }"))
                 .andExpect(status().isCreated())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.name").value("Electronics"));
@@ -121,7 +121,7 @@ public class CategoryControllerTest {
         Mockito.when(categoryService.getAllCatogories()).thenReturn(categories);
 
         // When & Then
-        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category"))
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category/list"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)));
