@@ -61,15 +61,17 @@ public class ReviewServiceTest {
     public void testSaveReview_ProductNotFound() {
         when(productRepository.findById(productId)).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> reviewService.saveReview(review));
+        assertThrows(NotFoundException.class, () -> reviewService.saveReview(review, "nameUser"));
     }
 
     @Test
     public void testSaveReview_Success() {
+        product.setName("product");
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
         when(reviewRepository.save(review)).thenReturn(review);
 
-        Review savedReview = reviewService.saveReview(review);
+        Review savedReview = reviewService.saveReview(review, "nameUser");
 
         assertNotNull(savedReview);
         verify(reviewRepository).save(review);

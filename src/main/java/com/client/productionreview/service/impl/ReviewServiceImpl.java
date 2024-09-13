@@ -1,20 +1,28 @@
 package com.client.productionreview.service.impl;
 
+import com.client.productionreview.dtos.NotificationDto;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.model.jpa.Review;
+import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
 import com.client.productionreview.service.ReviewService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
 public class ReviewServiceImpl implements ReviewService {
+
+    private final Sinks.Many<NotificationDto> reviewSink = Sinks.many().multicast().onBackpressureBuffer();
 
 
     ReviewRepository reviewRepository;
@@ -30,7 +38,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @CacheEvict(value = "review", allEntries = true)
-    public Review saveReview(Review review) {
+    public Review saveReview(Review review, String nameUser) {
 
         Optional<Product> product = getProduct(review);
 
@@ -38,7 +46,18 @@ public class ReviewServiceImpl implements ReviewService {
             throw new NotFoundException("Product not found");
         }
 
-        return reviewRepository.save(review);
+            NotificationDto notificationDto = new NotificationDto();
+            notificationDto.setNameUser(nameUser);
+            notificationDto.setAction("criacap de comentario" + product.get().getName());
+            notificationDto.setMessage("Comentario criado com sucesso");
+
+            reviewSink.tryEmitNext(notificationDto);
+
+            return reviewRepository.save(review);
+
+
+
+
 
     }
 
@@ -107,4 +126,9 @@ public class ReviewServiceImpl implements ReviewService {
         return reviewRepository.findAll();
 
     }
+
+    public Flux<NotificationDto> getCommentStream() {
+        return reviewSink.asFlux();
+    }
+
 }
