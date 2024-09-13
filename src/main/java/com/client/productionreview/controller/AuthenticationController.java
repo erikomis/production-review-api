@@ -2,7 +2,6 @@ package com.client.productionreview.controller;
 
 
 import com.client.productionreview.dtos.auth.*;
-import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -12,11 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import static org.springframework.http.HttpHeaders.SET_COOKIE;
 import static org.springframework.http.ResponseEntity.ok;
-
 @RestController
 @RequestMapping(value = "api/v1/auth")
 public class AuthenticationController {
-
 
     private final UserDetailsService userService;
 
@@ -27,7 +24,7 @@ public class AuthenticationController {
 
     @PostMapping("/sign-in")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<?> signIn(@Valid @RequestBody AuthSignInDTORequest authSignInDTORequest) {
+    public ResponseEntity<?> signIn(@Valid @RequestBody AuthSignInDTORequest authSignInDTORequest ) {
         final var responseCookie = userService.loadUserByUsernameAndPass(authSignInDTORequest);
         return ok().
                 header(SET_COOKIE, responseCookie.getToken().toString()).
@@ -38,10 +35,20 @@ public class AuthenticationController {
 
     @PostMapping("/sign-up")
     @ResponseStatus(HttpStatus.CREATED)
-    public void signUp(@Valid @RequestBody AuthSignUpDTORequest authSignUpDTORequest) {
-        userService.signUp(authSignUpDTORequest);
+    public void signUp(@Valid @RequestBody AuthSignUpDTORequest authSignUpDTORequest, HttpServletRequest request) {
+        final var origin = request.getHeader("Origin");
+        userService.signUp(authSignUpDTORequest, origin);
     }
 
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<?> logout() {
+        final var responseCookie= userService.logout();
+        return ok().
+                header(SET_COOKIE, responseCookie.get("token").toString()).
+                header(SET_COOKIE, responseCookie.get("refreshToken").toString())
+                .body(null);
+    }
 
     @GetMapping("/activate/{token}")
     @ResponseStatus(HttpStatus.OK)
@@ -50,7 +57,7 @@ public class AuthenticationController {
     }
 
     @PostMapping("/send-recovery-code/send")
-    public ResponseEntity<?> sendRecoveryCode(@Valid @RequestBody String email) {
+    public ResponseEntity<?> sendRecoveryCode(@Valid @RequestBody ForgotPasswordRequest email) {
         userService.sendRecoveryCode(email);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
     }
