@@ -56,6 +56,8 @@ public class SecurityConfig {
                                     "api/v1/review/list",
                                     "api/v1/auth/sign-up",
                                     "api/v1/auth/sign-in",
+                                    "api/v1/auth/send-recovery-code/send",
+                                    "api/v1/auth/recovery-code/password",
                                     "api/v1/auth/activate/**")
                             .permitAll()
                             .requestMatchers(PERMIT_ALL_LIST).permitAll();
