@@ -24,8 +24,9 @@ public class AuthenticationController {
 
     @PostMapping("/sign-in")
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<?> signIn(@Valid @RequestBody AuthSignInDTORequest authSignInDTORequest ) {
-        final var responseCookie = userService.loadUserByUsernameAndPass(authSignInDTORequest);
+    public ResponseEntity<?> signIn(@Valid @RequestBody AuthSignInDTORequest authSignInDTORequest,  HttpServletRequest request ) {
+        final var origin = request.getHeader("Origin");
+        final var responseCookie = userService.loadUserByUsernameAndPass(authSignInDTORequest, origin);
         return ok().
                 header(SET_COOKIE, responseCookie.getToken().toString()).
                 header(SET_COOKIE, responseCookie.getRefreshToken().toString())

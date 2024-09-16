@@ -12,7 +12,7 @@ public interface UserDetailsService {
 
 
 
-    AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest);
+    AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest, String origin);
 
     void signUp(AuthSignUpDTORequest authSignUpDTORequest, String origin);
 
