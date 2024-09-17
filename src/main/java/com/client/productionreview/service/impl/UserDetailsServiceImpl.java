@@ -2,6 +2,7 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.auth.*;
 import com.client.productionreview.exception.BadRequestException;
+import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
 import com.client.productionreview.model.jpa.Role;
@@ -14,6 +15,7 @@ import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -47,7 +49,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
 
     @Override
-    public AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest) {
+    public AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest, String origin) {
         Optional<User> exists = userRepository.findByUsernameOrEmail(authSignInDTORequest.getUsername(), authSignInDTORequest.getUsername());
 
         if (exists.isEmpty()) {
@@ -55,6 +57,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }
 
         User user = exists.get();
+
+        if(user.getActive()){
+            activateAccount(origin, user);
+            throw new GlobalException("Usuário não ativado",  HttpStatus.FORBIDDEN);
+        }
 
         var passwordMatches = passwordEncoder.matches(authSignInDTORequest.getPassword(), user.getPassword());
 
@@ -97,10 +104,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         userRepository.save(user);
 
 
+        activateAccount(origin, user);
+
+
+    }
+
+    private void activateAccount(String origin, User user) {
         String subject = "Confirme seu e-mail para ativar sua conta";
         String token = UUID.randomUUID().toString();
 
-        String confirmationLink = origin  + "/activate-account/" + token;
+        String confirmationLink = origin + "/activate-account/" + token;
 
         String body = "Olá " + user.getUsername() + ",\n\n"
                 + "Obrigado por se registrar no nosso sistema! Para ativar sua conta, por favor, confirme seu e-mail clicando no link abaixo:\n\n"
@@ -113,13 +126,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         userRecoveryCodeRepository.save(UserRecoveryCode.builder().email(user.getEmail()).code(token).build());
 
         mailIntegration.send(user.getEmail(), body, subject);
-
-
     }
 
     @Override
     public void sendRecoveryCode(ForgotPasswordRequest email) {
-        System.out.println(email);
         UserRecoveryCode userRecoveryCode;
         String code = String.format("%04d", new Random().nextInt(10000));
 
