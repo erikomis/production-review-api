@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.index.Indexed;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @RedisHash("recoveryCode")
@@ -16,7 +17,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserRecoveryCode {
+public class UserRecoveryCode  implements Serializable {
 
     @Id
     private String id;

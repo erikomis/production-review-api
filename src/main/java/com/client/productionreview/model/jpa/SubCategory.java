@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -17,7 +19,7 @@ import java.time.LocalDateTime;
 @Builder
 @Table(name = "sub_category")
 @Entity
-public class SubCategory {
+public class SubCategory implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,12 +28,14 @@ public class SubCategory {
     private String description;
     private String slug;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY,cascade = CascadeType.ALL)
     @JoinColumn(name = "category_id", referencedColumnName="id", insertable = false, updatable = false)
     private Category category;
 
     @Column(name = "category_id")
     private Long categorieId;
+
+
 
 
     @CreationTimestamp
