@@ -1,8 +1,10 @@
 package com.client.productionreview.service;
 
 
+import com.client.productionreview.dtos.NotificationDto;
 import com.client.productionreview.exception.NotFoundException;
 
+import com.client.productionreview.message.producer.ProductionReviewApiProducer;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.model.jpa.Review;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
@@ -38,7 +40,8 @@ public class ReviewServiceTest {
     @Mock
     private ReviewRepository  reviewRepository;
 
-
+    @Mock
+    private ProductionReviewApiProducer productionReviewApiProducer ;
 
     private Review review;
     private Product product;
@@ -66,8 +69,14 @@ public class ReviewServiceTest {
 
     @Test
     public void testSaveReview_Success() {
+        NotificationDto notificationDto = new NotificationDto();
+        notificationDto.setNameUser("nameUser");
+        notificationDto.setAction("criacao de comentario product");
+        notificationDto.setMessage("Comentario criado com sucesso");
+
         product.setName("product");
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+
 
         when(reviewRepository.save(review)).thenReturn(review);
 
