@@ -36,13 +36,13 @@ public class ReviewController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         User user = (User) authentication.getPrincipal();
 
-        return reviewMapper.toDTO(reviewService.saveReview(reviewMapper.toModel(requestDTO), user.getName()));
+        return reviewMapper.toDTO(reviewService.saveReview(reviewMapper.toModel(requestDTO , user.getId()), user.getName()));
 
     }
 
     @PutMapping("/{id}")
     public ReviewResponseDTO updateReview(@Valid @RequestBody ReviewRequestDTO requestDTO, @PathVariable("id") Long id) {
-        return reviewMapper.toDTO(reviewService.updateReview(reviewMapper.toModel(requestDTO), id));
+        return reviewMapper.toDTO(reviewService.updateReview(reviewMapper.toModel(requestDTO, id), id));
     }
 
 
@@ -59,7 +59,7 @@ public class ReviewController {
     }
 
 
- @GetMapping("/list")
+    @GetMapping("/list")
     public List<Review> getReviews() {
         return reviewService.getReviews();
     }
