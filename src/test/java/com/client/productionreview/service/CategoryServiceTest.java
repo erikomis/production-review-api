@@ -40,7 +40,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.save(category)).thenReturn(category);
 
-       assertEquals(category, categoryService.addCatogory(category));
+        assertEquals(category, categoryService.addCategory(category));
 
         verify(categorieRepository, times(1)).save(category);
 
@@ -58,7 +58,7 @@ class CategoryServiceTest {
         when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(category));
 
         assertThrows(BusinessExcepion.class, () -> {
-            categoryService.addCatogory(category);
+            categoryService.addCategory(category);
         });
 
         verify(categorieRepository, times(1)).findByName(category.getName());
@@ -78,7 +78,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
         when(categorieRepository.save(category)).thenReturn(category);
 
-        categoryService.updateCatogory(category, id);
+        categoryService.updateCategory(category, id);
 
         verify(categorieRepository, times(1)).findById(id);
         verify(categorieRepository, times(1)).findByName(category.getName());
@@ -98,7 +98,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThrows(NotFoundException.class, () -> {
-            categoryService.updateCatogory(category, id);
+            categoryService.updateCategory(category, id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -120,7 +120,7 @@ class CategoryServiceTest {
         when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(category));
 
         assertThrows(BusinessExcepion.class, () -> {
-            categoryService.updateCatogory(category, id);
+            categoryService.updateCategory(category, id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -143,7 +143,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
 
-        categoryService.deleteCatogory(id);
+        categoryService.deleteCategory(id);
 
         verify(categorieRepository, times(1)).findById(id);
         verify(categorieRepository, times(1)).deleteById(id);
@@ -162,7 +162,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThrows(NotFoundException.class, () -> {
-            categoryService.deleteCatogory(id);
+            categoryService.deleteCategory(id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -182,7 +182,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
 
-        categoryService.getCatogory(id);
+        categoryService.getCategory(id);
 
         verify(categorieRepository, times(1)).findById(id);
 
@@ -199,7 +199,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThrows(NotFoundException.class, () -> {
-            categoryService.getCatogory(id);
+            categoryService.getCategory(id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -217,7 +217,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.findAll()).thenReturn(List.of(category));
 
-        assertEquals(List.of(category), categoryService.getAllCatogories());
+        assertEquals(List.of(category), categoryService.getAllCategories());
 
         verify(categorieRepository, times(1)).findAll();
 

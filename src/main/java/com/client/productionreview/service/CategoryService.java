@@ -6,13 +6,13 @@ import java.util.List;
 
 public interface CategoryService {
 
-    public Category addCatogory(Category categorie);
+     Category addCategory(Category categorie);
 
-    public Category updateCatogory(Category categorioDto, Long id);
+     Category updateCategory(Category categorioDto, Long id);
 
-    public void deleteCatogory(Long id);
+     void deleteCategory(Long id);
 
-    public Category getCatogory(Long id);
+     Category getCategory(Long id);
 
-    public List<Category> getAllCatogories();
+     List<Category> getAllCategories();
 }

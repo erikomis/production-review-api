@@ -32,7 +32,7 @@ public class CategoryController {
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
     public CategoryResponseDTO addCatogory( @Valid @RequestBody CategoryRequestDTO categorie){
         Category model = categorieMapper.toModel(categorie);
-        var categorieModel = categorieService.addCatogory(model);
+        var categorieModel = categorieService.addCategory(model);
         return  categorieMapper.toDTO(categorieModel);
     }
 
@@ -42,7 +42,7 @@ public class CategoryController {
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
     public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @RequestBody CategoryRequestDTO categorioDto) {
         Category model = categorieMapper.toModel(categorioDto);
-        var categorieModel = categorieService.updateCatogory(model, id);
+        var categorieModel = categorieService.updateCategory(model, id);
         return  categorieMapper.toDTO(categorieModel);
     }
 
@@ -50,13 +50,13 @@ public class CategoryController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteCatogory(@PathVariable("id") Long id) {
-        categorieService.deleteCatogory(id);
+        categorieService.deleteCategory(id);
     }
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public CategoryResponseDTO getCatogory(@PathVariable("id") Long id) {
-       Category categorieModel = categorieService.getCatogory(id);
+       Category categorieModel = categorieService.getCategory(id);
         return categorieMapper.toDTO(categorieModel);
 
     }
@@ -64,7 +64,7 @@ public class CategoryController {
     @GetMapping("/list")
     @ResponseStatus(HttpStatus.OK)
     public List<Category> getAllCatogories() {
-        return  categorieService.getAllCatogories();
+        return  categorieService.getAllCategories();
 
     }
 
