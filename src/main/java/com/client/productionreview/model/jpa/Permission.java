@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -20,7 +21,7 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @ToString(exclude = "roles")
-public class Permission {
+public class Permission implements Serializable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
