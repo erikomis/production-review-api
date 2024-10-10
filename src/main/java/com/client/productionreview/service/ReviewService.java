@@ -8,15 +8,14 @@ import java.util.List;
 
 public interface ReviewService {
 
-    public Review saveReview( Review review , String nameUser);
+     Review saveReview( Review review , String nameUser);
 
-    public Review updateReview(Review review, Long id);
+     Review updateReview(Review review, Long id);
+     void deleteReview(Long id);
 
-    public void deleteReview(Long id);
+     Review getReview(Long id);
 
-    public Review getReview(Long id);
+     List<Review> getReviews();
 
-    public List<Review> getReviews();
-
-    public Flux<NotificationDto> getCommentStream();
+     Flux<NotificationDto> getCommentStream();
 }
