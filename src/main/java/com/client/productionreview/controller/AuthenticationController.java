@@ -70,6 +70,7 @@ public class AuthenticationController {
 
 
     @PatchMapping("/recovery-code/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<?> updatePasswordByRecoveryCode(@Valid @RequestBody AuthUpdatePasswordDTORequest userDetailsDto) {
         userService.updatePasswordByRecoveryCode(userDetailsDto);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
