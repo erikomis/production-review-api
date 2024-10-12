@@ -3,7 +3,9 @@ package com.client.productionreview.service;
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.model.jpa.Category;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
+import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 
 import java.util.List;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -27,7 +30,8 @@ class CategoryServiceTest {
     @Mock
     private CategoryRepository categorieRepository;
 
-
+    @Mock
+    private  SubCategoryRepository subCategoryRepository;
 
 
     @Test
@@ -151,7 +155,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    void  givenCategoryId_whenDeleteCategory_thenThrowException() {
+    void  givenCategoryId_whenDeleteCategory_thenThrowExceptionNotFound() {
 
         Long id = 1L;
         Category category = new Category();
@@ -161,7 +165,33 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
+
         assertThrows(NotFoundException.class, () -> {
+            categoryService.deleteCategory(id);
+        });
+
+        verify(categorieRepository, times(1)).findById(id);
+        verify(categorieRepository, times(0)).deleteById(id);
+
+    }
+
+    @Test
+    void  givenCategoryId_whenDeleteCategory_thenThrowExceptionBusiness() {
+
+        Long id = 1L;
+        Category category = new Category();
+        category.setName("category");
+        category.setDescription("description");
+        category.setSlug("slug");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setId(1L);
+        subCategory.setName("subCategory");
+
+        when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
+        when(subCategoryRepository.findByCategorieId(id)).thenReturn(java.util.Optional.of(subCategory));
+
+        assertThrows(BusinessExcepion.class, () -> {
             categoryService.deleteCategory(id);
         });
 
@@ -213,7 +243,6 @@ class CategoryServiceTest {
         category.setName("category");
         category.setDescription("description");
         category.setSlug("slug");
-        category.setSubCategories(List.of());
 
         when(categorieRepository.findAll()).thenReturn(List.of(category));
 
