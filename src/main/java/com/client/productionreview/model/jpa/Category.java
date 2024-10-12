@@ -39,7 +39,7 @@ public class Category  implements  Serializable {
     private String slug;
 
     @JsonManagedReference
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
     private List <SubCategory> subCategories;
 
     @CreationTimestamp
