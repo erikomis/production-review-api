@@ -27,6 +27,8 @@ import java.util.stream.Stream;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class User implements UserDetails, Serializable {
 
+    private static final long serialVersionUID = 18L;
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

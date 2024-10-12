@@ -23,6 +23,8 @@ import java.util.Set;
 @ToString(exclude = "roles")
 public class Permission implements Serializable {
 
+    private static final long serialVersionUID = 2L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

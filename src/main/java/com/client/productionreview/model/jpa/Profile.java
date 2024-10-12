@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Profile implements Serializable {
+    private static final long serialVersionUID = 5L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 @Builder
 @Entity
 public class Review implements Serializable {
+    private static final long serialVersionUID = 7L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

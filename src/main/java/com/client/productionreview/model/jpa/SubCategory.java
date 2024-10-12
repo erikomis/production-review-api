@@ -1,6 +1,9 @@
 package com.client.productionreview.model.jpa;
 
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +22,11 @@ import java.util.List;
 @Builder
 @Table(name = "sub_category")
 @Entity
-public class SubCategory implements Serializable {
+public class SubCategory implements  Serializable {
+
+
+
+    private static final long serialVersionUID = 11L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,15 +35,14 @@ public class SubCategory implements Serializable {
     private String description;
     private String slug;
 
-    @ManyToOne(fetch = FetchType.LAZY,cascade = CascadeType.ALL)
-    @JoinColumn(name = "category_id", referencedColumnName="id", insertable = false, updatable = false)
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JsonBackReference
+    @JoinColumn(name = "category_id", referencedColumnName = "id")
     private Category category;
 
-    @Column(name = "category_id")
+    @Column(name = "category_id", insertable = false, updatable = false)
     private Long categorieId;
-
-
-
 
     @CreationTimestamp
     @Column(name = "created_at")

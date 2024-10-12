@@ -19,6 +19,7 @@ import java.util.Set;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @ToString(exclude = "users")
 public class Role implements Serializable {
+    private static final long serialVersionUID = 7L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
