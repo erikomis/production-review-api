@@ -64,7 +64,7 @@ public class SubCategoriaController {
 
     }
 
-    @GetMapping
+    @GetMapping("/list")
     @ResponseStatus(HttpStatus.OK)
     public List<SubCategory> getAll() {
        return subCategoryService.getAllSubCategorie();
