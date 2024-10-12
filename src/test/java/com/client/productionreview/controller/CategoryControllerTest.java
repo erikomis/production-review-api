@@ -52,7 +52,7 @@ public class CategoryControllerTest {
         categoryResponse.setName("Electronics");
 
         Mockito.when(categoryMapper.toModel(any(CategoryRequestDTO.class))).thenReturn(category);
-        Mockito.when(categoryService.addCatogory(any(Category.class))).thenReturn(category);
+        Mockito.when(categoryService.addCategory(any(Category.class))).thenReturn(category);
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
@@ -74,7 +74,7 @@ public class CategoryControllerTest {
         categoryResponse.setName("Home Appliances");
 
         Mockito.when(categoryMapper.toModel(any(CategoryRequestDTO.class))).thenReturn(category);
-        Mockito.when(categoryService.updateCatogory(any(Category.class), anyLong())).thenReturn(category);
+        Mockito.when(categoryService.updateCategory(any(Category.class), anyLong())).thenReturn(category);
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
@@ -104,7 +104,7 @@ public class CategoryControllerTest {
         CategoryResponseDTO categoryResponse = new CategoryResponseDTO();
         categoryResponse.setName("Electronics");
 
-        Mockito.when(categoryService.getCatogory(anyLong())).thenReturn(category);
+        Mockito.when(categoryService.getCategory(anyLong())).thenReturn(category);
         Mockito.when(categoryMapper.toDTO(any(Category.class))).thenReturn(categoryResponse);
 
         // When & Then
@@ -118,7 +118,7 @@ public class CategoryControllerTest {
     void getAllCategories_shouldReturnListOfCategories() throws Exception {
         // Given
         List<Category> categories = List.of(new Category());
-        Mockito.when(categoryService.getAllCatogories()).thenReturn(categories);
+        Mockito.when(categoryService.getAllCategories()).thenReturn(categories);
 
         // When & Then
         mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category/list"))
