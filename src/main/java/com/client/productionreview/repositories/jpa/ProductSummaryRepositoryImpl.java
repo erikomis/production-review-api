@@ -5,6 +5,7 @@ import com.client.productionreview.dtos.product.ProductSortProperty;
 import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.model.jpa.ProductImage;
 import com.client.productionreview.model.jpa.ReviewStatus;
+import com.client.productionreview.utils.TextNormalizer;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
@@ -62,9 +63,11 @@ public class ProductSummaryRepositoryImpl implements ProductSummaryRepository {
 
     private String where(ProductFilter filter, Map<String, Object> params) {
         List<String> clauses = new ArrayList<>();
-        if (filter.search() != null && !filter.search().isBlank()) {
-            clauses.add("LOWER(p.name) LIKE :search");
-            params.put("search", "%" + filter.search().trim().toLowerCase() + "%");
+        String search = TextNormalizer.normalize(filter.search());
+        if (search != null && !search.isEmpty()) {
+            // busca sem acento e sem diferenciar maiúsculas: "cafe" acha "Café"
+            clauses.add("p.searchName LIKE :search ESCAPE '!'");
+            params.put("search", "%" + TextNormalizer.escapeLike(search) + "%");
         }
         if (filter.categoryId() != null) {
             clauses.add("c.id = :categoryId");
@@ -81,6 +84,10 @@ public class ProductSummaryRepositoryImpl implements ProductSummaryRepository {
         if (filter.slug() != null) {
             clauses.add("p.slug = :slug");
             params.put("slug", filter.slug());
+        }
+        if (filter.followedBy() != null) {
+            clauses.add("EXISTS (SELECT 1 FROM ProductFollow f WHERE f.productId = p.id AND f.userId = :followedBy)");
+            params.put("followedBy", filter.followedBy());
         }
         if (filter.onlyRated()) {
             clauses.add("EXISTS (SELECT 1 FROM Review rv WHERE rv.productId = p.id AND rv.status = :visible)");

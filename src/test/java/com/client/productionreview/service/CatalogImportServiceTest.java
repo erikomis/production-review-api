@@ -205,4 +205,24 @@ class CatalogImportServiceTest {
         assertTrue(service.getLatestJob().isEmpty());
         assertThrows(NotFoundException.class, () -> service.getJob("nope"));
     }
+
+    @Test
+    void import_skipsProductWithSameNormalizedNameInTheSubCategory() {
+        // mesmo produto com outro código (ex.: outra embalagem) e nome só com acento/maiúsculas diferentes
+        when(client.searchProducts(anyString(), anyInt())).thenAnswer(inv -> {
+            String tag = inv.getArgument(0);
+            return List.of(
+                    OpenFoodFactsProduct.builder().code(tag + "-1").productName("Café Pilão " + tag)
+                            .imageFrontUrl("https://img/" + tag + "-1.jpg").build(),
+                    OpenFoodFactsProduct.builder().code(tag + "-2").productName("CAFE  PILAO " + tag)
+                            .imageFrontUrl("https://img/" + tag + "-2.jpg").build());
+        });
+        CatalogImportServiceImpl service = service(Runnable::run);
+
+        ImportJobDTO done = service.getJob(service.startOpenFoodFactsImport(5, admin).getId());
+
+        assertEquals(12, productRepository.count());
+        assertEquals(12, done.getProductsCreated());
+        assertEquals(12, done.getProductsSkipped());
+    }
 }

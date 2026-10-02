@@ -32,6 +32,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
 
     long countByStatus(ReviewStatus status);
 
+    boolean existsByProductId(Long productId);
+
     @Query("SELECT AVG(r.note) FROM Review r WHERE r.status = :status")
     Double averageNote(@Param("status") ReviewStatus status);
 

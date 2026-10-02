@@ -234,4 +234,69 @@ class ProductSummaryRepositoryTest {
 
         assertTrue(productRepository.findSummaries(ProductFilter.bySlug("nope"), PageRequest.of(0, 1)).isEmpty());
     }
+
+    // ---------- fase 3: busca sem acento, duplicados e search_name ----------
+
+    @Test
+    void search_ignoresAccentsAndCase() {
+        Product cafe = product("Café Pilão Tradicional", "cafe-pilao", kitchen);
+
+        // "cafe" acha "Café ..." e também "Cafeteira"
+        var both = productRepository.findSummaries(new ProductFilter("cafe", null, null, false), PageRequest.of(0, 10));
+        assertEquals(java.util.Set.of(cafe.getId(), coffee.getId()),
+                both.getContent().stream().map(ProductSummaryDTO::getId).collect(java.util.stream.Collectors.toSet()));
+
+        for (String term : java.util.List.of("CAFÉ PIL", "  pilao  trad", "Pilão")) {
+            var page = productRepository.findSummaries(new ProductFilter(term, null, null, false), PageRequest.of(0, 10));
+            assertEquals(java.util.List.of(cafe.getId()), page.getContent().stream().map(ProductSummaryDTO::getId).toList(), term);
+        }
+    }
+
+    @Test
+    void search_treatsLikeWildcardsLiterally() {
+        product("Suco 100% Uva", "suco-uva", kitchen);
+
+        assertEquals(1, productRepository.findSummaries(new ProductFilter("100%", null, null, false), PageRequest.of(0, 10))
+                .getTotalElements());
+        assertEquals(0, productRepository.findSummaries(new ProductFilter("_", null, null, false), PageRequest.of(0, 10))
+                .getTotalElements());
+    }
+
+    @Test
+    void save_keepsSearchNameInSync() {
+        assertEquals("cafeteira", productRepository.findById(coffee.getId()).orElseThrow().getSearchName());
+
+        coffee.setName("Cafeteira  Elétrica");
+        productRepository.saveAndFlush(coffee);
+
+        assertEquals("cafeteira eletrica", productRepository.findById(coffee.getId()).orElseThrow().getSearchName());
+    }
+
+    @Test
+    void findDuplicates_returnsSameNormalizedNameInSameSubCategory_oldestFirst() {
+        Product dupCoffee = product("CAFETEIRA ", "cafeteira-2", kitchen);
+        // mesmo nome em outra subcategoria não é duplicado
+        product("Cafeteira", "cafeteira-3", phones);
+
+        java.util.List<Product> duplicates = productRepository.findDuplicates();
+
+        assertEquals(java.util.List.of(coffee.getId(), dupCoffee.getId()), duplicates.stream().map(Product::getId).toList());
+        assertTrue(productRepository.existsBySubCategorieIdAndSearchName(kitchen.getId(), "cafeteira"));
+        assertFalse(productRepository.existsBySubCategorieIdAndSearchName(notebooks.getId(), "cafeteira"));
+    }
+
+    @Test
+    void backfill_fillsMissingSearchNameWithoutTouchingUpdatedAt() {
+        productRepository.updateSearchName(toaster.getId(), null);
+        java.time.Instant updatedAt = productRepository.findById(toaster.getId()).orElseThrow().getUpdatedAt();
+
+        int updated = new com.client.productionreview.config.SearchNameBackfill(productRepository).backfill();
+
+        assertEquals(1, updated);
+        Product reloaded = productRepository.findById(toaster.getId()).orElseThrow();
+        assertEquals("torradeira", reloaded.getSearchName());
+        assertEquals(updatedAt, reloaded.getUpdatedAt());
+        // idempotente
+        assertEquals(0, new com.client.productionreview.config.SearchNameBackfill(productRepository).backfill());
+    }
 }

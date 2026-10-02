@@ -16,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String username);
 
+    Optional<User> findByUsername(String username);
+
     /**
      * Listagem do painel. {@code pattern} já vem em minúsculas com curingas; {@code admin} filtra quem
      * tem (true) ou não tem (false) a role ADMIN; parâmetros nulos não filtram.
