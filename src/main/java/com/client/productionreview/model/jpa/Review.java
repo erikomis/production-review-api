@@ -42,6 +42,21 @@ public class Review implements Serializable {
     private Long productId;
 
 
+    /** Reviews ocultadas pela moderação somem das listagens públicas e das médias. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    @Builder.Default
+    private ReviewStatus status = ReviewStatus.VISIBLE;
+
+    @Column(name = "moderation_reason")
+    private String moderationReason;
+
+    @Column(name = "moderated_at")
+    private LocalDateTime moderatedAt;
+
+    @Column(name = "moderated_by")
+    private Long moderatedBy;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -49,5 +64,12 @@ public class Review implements Serializable {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private  LocalDateTime updatedAt;
+
+    @PrePersist
+    void defaultStatus() {
+        if (status == null) {
+            status = ReviewStatus.VISIBLE;
+        }
+    }
 
 }
