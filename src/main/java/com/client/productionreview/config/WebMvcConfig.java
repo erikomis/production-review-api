@@ -22,7 +22,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins.toArray(String[]::new))
                 .allowedHeaders("*")
                 .allowCredentials(true)
-                .allowedMethods("GET", "POST", "PUT", "DELETE","PATCH" ,"OPTIONS", "HEAD");
+                .allowedMethods("GET", "POST", "PUT", "DELETE","PATCH" ,"OPTIONS", "HEAD")
+                // headers que os fronts precisam ler: tempo de espera do 429 e nome do arquivo CSV
+                .exposedHeaders("Retry-After", "Content-Disposition");
     }
 
 

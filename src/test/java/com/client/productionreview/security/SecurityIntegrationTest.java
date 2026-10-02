@@ -241,6 +241,17 @@ class SecurityIntegrationTest {
     // ---------- CORS ----------
 
     @Test
+    void corsResponse_exposesRetryAfterAndContentDisposition() throws Exception {
+        // sem o expose, o navegador não deixa o front ler o tempo de espera do 429 nem o nome do CSV
+        mockMvc.perform(get("/api/v1/category/list").header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        org.hamcrest.Matchers.allOf(
+                                org.hamcrest.Matchers.containsString("Retry-After"),
+                                org.hamcrest.Matchers.containsString("Content-Disposition"))));
+    }
+
+    @Test
     void preflight_onProtectedRoute_fromAllowedOrigin_isAccepted() throws Exception {
         mockMvc.perform(options("/api/v1/category/")
                         .header(HttpHeaders.ORIGIN, "http://localhost:5173")
