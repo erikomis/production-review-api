@@ -1,36 +1,41 @@
 name: deployment
 on:
-  push:
-    branches: [ "main" ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ "main" ]
+  # roda somente depois que os testes do push na main passarem
   workflow_run:
     workflows: ["testings"]
+    types: [completed]
+    branches: [main]
 
 jobs:
   deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.ref == 'refs/heads/main' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          # builda exatamente o commit que foi testado
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push frontend Docker image
+
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: "{{defaultContext}}"
+          context: .
           push: true
-          tags:  ${{ secrets.DOCKER_USERNAME }}/production-review:latest, ${{ secrets.DOCKER_USERNAME }}/production-review:${{ github.run_number }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/production-review:latest, ${{ secrets.DOCKER_USERNAME }}/production-review:${{ github.run_number }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
       - name: Deploy to vps
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}

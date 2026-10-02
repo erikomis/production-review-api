@@ -2,34 +2,35 @@ name: testings
 on:
   pull_request:
     branches: ["main", "development"]
+  push:
+    branches: ["main"]
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: "17"
           distribution: "temurin"
           cache: maven
 
+      # o relatório do JaCoCo é gerado na fase verify
       - name: Build with Maven
-        run: mvn clean verify
-
-      - name: Generate Jacoco Report
-        run: mvn jacoco:report
+        run: mvn -B clean verify
 
       - name: Upload Jacoco Report
-        uses: actions/upload-artifact@v3
-        with:
-          name: Jacoco Report
-          path: target/site/jacoco
-
-      - name: Test Report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: success() || failure()
         with:
-          name: SpringBoot Report
-          path: target/site/serenity/
+          name: jacoco-report
+          path: target/site/jacoco
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
