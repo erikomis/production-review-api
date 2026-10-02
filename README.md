@@ -4,7 +4,7 @@
 
 # Production Review API
 
-**API REST do ecossistema ReviewStore: autenticação, catálogo de produtos e avaliações.**
+**API REST do ecossistema ReviewStore: autenticação, catálogo de produtos, avaliações, moderação e auditoria.**
 Alimenta o [site público](https://github.com/erikomis/dashboard-production-review-site) e o [painel administrativo](https://github.com/erikomis/dashboard-production-review-react).
 
 <p>
@@ -18,8 +18,8 @@ Alimenta o [site público](https://github.com/erikomis/dashboard-production-revi
   <img alt="Flyway" src="https://img.shields.io/badge/migrações-Flyway-1C2434?style=flat-square" />
   <img alt="Kafka" src="https://img.shields.io/badge/eventos-Kafka-1C2434?style=flat-square" />
   <img alt="MinIO" src="https://img.shields.io/badge/arquivos-MinIO-1C2434?style=flat-square" />
-  <img alt="Testes" src="https://img.shields.io/badge/testes-156_passando-067647?style=flat-square" />
-  <img alt="Cobertura" src="https://img.shields.io/badge/cobertura-~88%25_linhas-067647?style=flat-square" />
+  <img alt="Testes" src="https://img.shields.io/badge/testes-268_passando-067647?style=flat-square" />
+  <img alt="Cobertura" src="https://img.shields.io/badge/cobertura-~92%25_linhas-067647?style=flat-square" />
 </p>
 
 [Visão geral](#-visão-geral) ·
@@ -64,15 +64,25 @@ flowchart LR
     S --> Kafka{{"Kafka<br/>production-review-api"}}
     S --> MinIO[("MinIO<br/>imagens")]
     S --> SMTP["✉️ SMTP<br/>ativação · recuperação"]
+    S -->|importação| OFF["🥫 Open Food Facts<br/>API pública"]
+    Kafka --> Logs["🗒️ Serviço de logs<br/>MongoDB"]
+    S -->|proxy /admin/activity| Logs
 ```
 
 | Recurso | Destaques |
 |---|---|
 | 🔐 **Autenticação** | Cadastro com ativação por e-mail, login por usuário ou e-mail, JWT em cookies `httpOnly` (access + refresh), recuperação de senha com código de 6 dígitos |
-| 🗂 **Catálogo** | Categorias → subcategorias → produtos, com slug, busca parcial, ordenação e paginação |
-| ⭐ **Avaliações** | Nota de 1 a 5, listagem por produto, resumo com média e total, e regra de autoria (só o autor ou um ADMIN altera) |
+| 🗂 **Catálogo** | Categorias → subcategorias → produtos, com slug, busca parcial, filtros por categoria/subcategoria, ordenação e paginação |
+| 🏆 **Notas e ranking** | Listagem de produtos com nota média e total de avaliações; ranking por média (desempate pelo total) |
+| ⭐ **Avaliações** | Nota de 1 a 5, filtros por nota, ordenação (recentes, antigas, maior/menor nota, mais úteis), distribuição de notas, "minhas avaliações" e regra de autoria (só o autor ou um ADMIN altera) |
+| 👍 **Útil** | Qualquer usuário logado marca/desmarca a avaliação de outra pessoa como útil |
+| 🛡 **Moderação** | ADMIN oculta avaliações com motivo obrigatório; ocultas somem das listas públicas e das médias |
+| 👥 **Usuários** | ADMIN lista usuários, concede/remove o perfil ADMIN e ativa/desativa contas (token de conta desativada deixa de valer na hora) |
+| 📊 **Estatísticas** | Totais, média, distribuição de notas, avaliações e cadastros por dia e top produtos/categorias |
+| 🥫 **Importação** | Catálogo real do Open Food Facts (dados abertos, ODbL) em job assíncrono e idempotente |
+| 🗒️ **Auditoria** | Cada ação relevante vira um evento de domínio no Kafka; o painel consulta o histórico pelo proxy `/admin/activity` |
 | 🖼 **Imagens** | Upload para MinIO com validação de tipo e chave única por produto |
-| 🔔 **Tempo real** | Cada avaliação nova vai para um tópico Kafka e para um stream **SSE** consumido pelo painel |
+| 🔔 **Tempo real** | Cada avaliação nova também é emitida num stream **SSE** consumido pelo painel |
 | ⚡ **Cache** | Redis com evicção consistente nas escritas |
 | 📖 **Documentação** | OpenAPI 3 + Swagger UI em `/swagger-ui.html` |
 | 📈 **Observabilidade** | Actuator + Prometheus em `/actuator/prometheus`, com Grafana no `docker-compose` |
@@ -148,6 +158,11 @@ A API sobe em **http://localhost:8084**, e o Flyway cria as tabelas e os perfis 
 | `URL` | `https://storage.projetos-web.com` | Endpoint do MinIO |
 | `BUCKET_NAME` | `production-review` | Bucket das imagens |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Brokers do Kafka (sem Kafka, a API segue funcionando e só registra um aviso) |
+| `LOGS_SERVICE_URL` | `http://localhost:8089` | Serviço de logs (`production-review-api-logs`) usado pelo proxy `/admin/activity` |
+| `LOGS_API_TOKEN` | vazio | Token enviado no header `X-Internal-Token` ao serviço de logs |
+| `OPEN_FOOD_FACTS_URL` | `https://world.openfoodfacts.org` | Base da API do Open Food Facts |
+| `OPEN_FOOD_FACTS_MIN_INTERVAL_MS` | `6500` | Intervalo mínimo entre buscas (limite deles: ~10 por minuto) |
+| `OPEN_FOOD_FACTS_RETRY_DELAY_MS` | `15000` | Espera antes do único retry em 429/503/resposta não-JSON |
 | `PROFILE` | `dev` | Perfil ativo do Spring |
 
 </details>
@@ -182,13 +197,14 @@ Base: `/api/v1`. A documentação interativa completa fica em **`/swagger-ui.htm
 | Método | Rota | Descrição |
 |---|---|---|
 | `GET` | `/category/list` | Categorias com subcategorias aninhadas |
+| `GET` | `/category/slug/{slug}` | Categoria por slug com `subCategories` (404 se não existir) |
 | `GET` · `PUT` · `DELETE` | `/category/{id}` | Detalhe, edição e exclusão (409 se houver subcategorias) |
 | `POST` | `/category/` | Cria categoria |
 | `GET` | `/sub-categorie/list` | Subcategorias |
 | `GET` · `PUT` · `DELETE` | `/sub-categorie/{id}` | Detalhe, edição e exclusão |
 | `POST` | `/sub-categorie/create` | Cria subcategoria |
-| `GET` | `/production/list?page&size&search&property&sort` | Produtos paginados, com busca parcial e ordenação |
-| `GET` | `/production/{id}` · `/production/slug/{slug}` | Detalhe por id ou slug |
+| `GET` | `/production/list?page&size&search&categoryId&subCategorieId&onlyRated&property&sort` | Página de `ProductSummary` (com `averageNote`, `totalReviews`, categoria e imagem). `property` ∈ `name`, `createdAt`, `averageNote`, `totalReviews` (outro valor → 400). Ranking: `property=averageNote&sort=DESC&onlyRated=true` |
+| `GET` | `/production/{id}` · `/production/slug/{slug}` | `ProductDetail`: o resumo acima + todas as `images` |
 | `POST` | `/production/add` | Cria produto |
 | `PUT` | `/production/update/{id}` | Edita produto |
 | `DELETE` | `/production/delete/{id}` | Exclui produto |
@@ -201,12 +217,14 @@ Base: `/api/v1`. A documentação interativa completa fica em **`/swagger-ui.htm
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/review/list?page&size` | Todas as avaliações, mais recentes primeiro, com nome do produto e do autor |
-| `GET` | `/review/product/{id}?page&size` | Avaliações de um produto |
-| `GET` | `/review/product/{id}/summary` | `{ totalReviews, averageNote }` |
-| `GET` | `/review/{id}` | Detalhe |
+| `GET` | `/review/list?page&size` | Avaliações visíveis, mais recentes primeiro, com nome/slug do produto, autor e contagem de "útil" |
+| `GET` | `/review/product/{id}?page&size&note&sort` | Avaliações visíveis de um produto; `note` de 1 a 5; `sort` ∈ `recent`, `oldest`, `highest`, `lowest`, `helpful`. `helpfulByMe` vem preenchido se houver login |
+| `GET` | `/review/product/{id}/summary` | `{ productId, totalReviews, averageNote, distribution: {"1".."5"} }` (só visíveis) |
+| `GET` | `/review/me?page&size` | **Login.** Minhas avaliações, inclusive as ocultadas (com status e motivo) |
+| `POST` | `/review/{id}/helpful` | **Login.** Alterna "útil" → `{ reviewId, helpfulCount, helpfulByMe }`; 400 na própria avaliação, 404 se oculta |
+| `GET` | `/review/{id}` | Detalhe (oculta só para o autor ou ADMIN) |
 | `POST` | `/review/` | Publica avaliação (`note` de 1 a 5) |
-| `PUT` · `DELETE` | `/review/{id}` | Só o autor ou um ADMIN |
+| `PUT` · `DELETE` | `/review/{id}` | Só o autor ou um ADMIN; editar não muda o status de moderação |
 
 </details>
 
@@ -219,6 +237,47 @@ Base: `/api/v1`. A documentação interativa completa fica em **`/swagger-ui.htm
 | `GET` | `/notification/sse` | Stream SSE: um evento a cada avaliação criada |
 
 </details>
+
+<details>
+<summary><b>🛠 Administração</b> · <code>/admin/**</code>, só ADMIN</summary>
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/admin/reviews?page&size&status&note&productId&search` | Todas as avaliações (`VISIBLE`/`HIDDEN`), com `moderatedByName` |
+| `PATCH` | `/admin/reviews/{id}/moderation` | `{ status: "HIDDEN" \| "VISIBLE", reason }`; `reason` obrigatório ao ocultar |
+| `GET` | `/admin/users?page&size&search&role&active` | Usuários com `roles`, `createdAt` e `reviewsCount`. `role=ADMIN` = tem o perfil ADMIN; `role=USER` = não tem |
+| `PATCH` | `/admin/users/{id}/admin` | `{ admin: boolean }`; 400 ao remover o próprio ADMIN |
+| `PATCH` | `/admin/users/{id}/active` | `{ active: boolean }`; 400 ao desativar a si mesmo |
+| `GET` | `/admin/stats?days=30` | Totais, média, distribuição, séries diárias sem buracos (7 a 365 dias) e top 5 produtos/categorias |
+| `POST` | `/admin/import/open-food-facts` | `{ productsPerSubcategory: 1..30 }` (padrão 12) → **202** com o job; **409** se já houver um rodando |
+| `GET` | `/admin/import/jobs/{id}` · `/admin/import/jobs/latest` | Andamento do job (`latest` devolve 204 se nunca rodou) |
+| `GET` | `/admin/activity?page&size&type&entityType&userId&search&from&to` | Histórico de auditoria (proxy do serviço de logs) |
+| `GET` | `/admin/activity/summary?from&to` | Totais por tipo e por dia; **503** se o serviço de logs estiver fora |
+
+</details>
+
+### Importação do Open Food Facts
+
+Usa a API pública de busca (`/api/v2/search`, produtos vendidos no Brasil, por popularidade), nunca HTML, com
+`User-Agent: ProductionReview/1.0 (production-review-api)`, no mínimo 6,5 s entre buscas e um retry após 15 s em 429/503.
+A taxonomia é fixa: **Bebidas** (Refrigerantes, Sucos e néctares, Cafés), **Laticínios** (Leites, Iogurtes, Queijos),
+**Café da manhã** (Cereais matinais, Biscoitos, Pães) e **Doces e snacks** (Chocolates, Salgadinhos, Sorvetes).
+Categorias, subcategorias e produtos já existentes (mesmo slug) são reaproveitados, então rodar de novo só completa o que faltou.
+As imagens ficam no próprio Open Food Facts (`filename` `external:off:{code}`); removê-las não chama o MinIO.
+
+### Eventos de auditoria
+
+Publicados no tópico `production-review-api` depois que a operação dá certo (falha no Kafka vira só um aviso no log):
+
+```json
+{ "eventId": "uuid", "type": "REVIEW_CREATED", "action": "Avaliação criada",
+  "message": "Usuário Teste avaliou Smartphone X com 5 estrelas", "nameUser": "Usuário Teste", "userId": 2,
+  "entityType": "REVIEW", "entityId": "12", "occurredAt": "2026-10-02T03:10:00Z" }
+```
+
+Tipos: `USER_SIGNED_UP`, `USER_ACTIVATED`, `USER_LOGGED_IN`, `USER_ROLE_CHANGED`, `USER_STATUS_CHANGED`,
+`CATEGORY_*`, `SUBCATEGORY_*`, `PRODUCT_*` (`CREATED`/`UPDATED`/`DELETED`), `PRODUCT_IMAGE_ADDED`/`REMOVED`,
+`REVIEW_CREATED`/`UPDATED`/`DELETED`, `REVIEW_HIDDEN`/`RESTORED` e `CATALOG_IMPORT_STARTED`/`COMPLETED`/`FAILED`.
 
 ### Formatos de resposta
 
@@ -243,7 +302,8 @@ Base: `/api/v1`. A documentação interativa completa fica em **`/swagger-ui.htm
 - **JWT em cookies `httpOnly` + `Secure`**, com access e refresh token de tipos distintos: um não serve no lugar do outro.
 - **Senhas** com BCrypt. **Códigos de recuperação** de 6 dígitos gerados com `SecureRandom`, com expiração no Redis, uso único e invalidação após 5 tentativas.
 - **Links de e-mail** só usam o `Origin` da requisição se ele estiver em `ALLOWED_ORIGINS`, o que evita phishing com o domínio da aplicação.
-- **Autorização** por perfil e permissão (`@PreAuthorize`), mais a regra de autoria nas avaliações.
+- **Autorização** por perfil e permissão (`@PreAuthorize`), mais a regra de autoria nas avaliações. Tudo em `/api/v1/admin/**` exige ADMIN já no `SecurityFilterChain`.
+- **Contas desativadas** por um ADMIN perdem o acesso na hora: o filtro de autenticação e o refresh token deixam de aceitar o token delas.
 - **Validação** de todos os payloads, com limites alinhados às colunas do banco, e erros sem expor SQL nem stack trace.
 - **Nenhum segredo com valor padrão** no código: tudo vem do ambiente.
 
@@ -253,15 +313,19 @@ Base: `/api/v1`. A documentação interativa completa fica em **`/swagger-ui.htm
 ./mvnw verify   # testes + relatório de cobertura JaCoCo em target/site/jacoco
 ```
 
-**156 testes** com cerca de **88% de cobertura de linhas**, distribuídos em:
+**268 testes** com cerca de **92% de cobertura de linhas**, distribuídos em:
 
 | Camada | O que cobre |
 |---|---|
-| **Serviços** (Mockito) | Regras de negócio de auth, catálogo, avaliações e imagens |
-| **Controllers** (`@WebMvcTest`) | Contratos HTTP, validação e códigos de erro |
-| **Repositórios** (`@DataJpaTest` + H2) | Consultas de busca, resumo de notas, projeções e exclusões |
-| **Segurança** (`@SpringBootTest`) | Rotas públicas e protegidas, perfis, CORS no preflight, refresh token |
+| **Serviços** (Mockito) | Regras de negócio de auth, catálogo, avaliações, "útil", moderação, usuários, estatísticas e publicação de eventos |
+| **Importação** (`@DataJpaTest` + cliente mockado) | Idempotência, produtos sem nome/imagem, descrição composta, erro por etapa e job único (409) |
+| **Clientes HTTP** (`MockRestServiceServer`) | Open Food Facts (parâmetros, User-Agent, throttle, retry) e proxy do serviço de logs (repasse, 400, 503) |
+| **Controllers** (`@WebMvcTest`) | Contratos HTTP, validação e códigos de erro, inclusive das rotas de admin |
+| **Repositórios** (`@DataJpaTest` + H2) | Notas e ranking de produtos, filtros, `onlyRated`, só reviews visíveis, distribuição, busca de usuários |
+| **Segurança** (`@SpringBootTest`) | Rotas públicas e protegidas, `/admin/**` (401/403/200), `/review/me`, usuário desativado, CORS, refresh token |
 | **Unitários** | JWT (tipos, expiração, assinatura) e paginação |
+
+Nenhum teste chama o Open Food Facts de verdade, e o throttle é configurável para os testes não dormirem.
 
 ## 🔁 CI/CD e deploy
 
@@ -287,14 +351,14 @@ src/main/java/com/client/productionreview/
 ├── controller/      # endpoints REST + mappers DTO ↔ entidade
 ├── dtos/            # contratos de entrada e saída (com Bean Validation)
 ├── exception/       # exceções de domínio e handler global
-├── integration/     # envio de e-mail
-├── message/         # produtor Kafka
+├── integration/     # e-mail, Open Food Facts e proxy do serviço de logs
+├── message/         # produtor Kafka (eventos de domínio)
 ├── model/           # entidades JPA e hashes do Redis
 ├── provider/        # emissão e validação de JWT
 ├── repositories/    # Spring Data JPA e Redis
 ├── security/        # filtro de autenticação e SecurityFilterChain
 ├── service/         # regras de negócio
-└── utils/           # paginação
+└── utils/           # paginação, notas e slugs
 src/main/resources/db/migration/   # migrações Flyway
 ```
 
