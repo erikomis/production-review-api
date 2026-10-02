@@ -1,5 +1,6 @@
 package com.client.productionreview.model.jpa;
 
+import com.client.productionreview.utils.TextNormalizer;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,6 +31,10 @@ public class Product implements Serializable {
     private String description;
     private String slug;
 
+    /** Nome normalizado (minúsculas, sem acento) usado na busca e na detecção de duplicados. */
+    @Column(name = "search_name")
+    private String searchName;
+
     @ManyToOne
     @JoinColumn(name = "sub_category_id", referencedColumnName = "id", insertable = false, updatable = false)
     private SubCategory subCategorie;
@@ -50,6 +55,12 @@ public class Product implements Serializable {
     @Column(name = "updated_at")
     @UpdateTimestamp
     private  Instant updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void fillSearchName() {
+        searchName = TextNormalizer.normalize(name);
+    }
 }
 
 

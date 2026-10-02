@@ -57,6 +57,16 @@ public class Review implements Serializable {
     @Column(name = "moderated_by")
     private Long moderatedBy;
 
+    /** Resposta oficial da equipe (uma por review). */
+    @Column(name = "reply_text", length = 1000)
+    private String replyText;
+
+    @Column(name = "reply_author_id")
+    private Long replyAuthorId;
+
+    @Column(name = "replied_at")
+    private Instant repliedAt;
+
     @CreationTimestamp
     @Column(name = "created_at")
     private Instant createdAt;

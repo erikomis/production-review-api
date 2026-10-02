@@ -49,6 +49,11 @@ public class User implements UserDetails, Serializable {
     @Column(name = "active")
     private Boolean active;
 
+    /** Preferência do usuário: recebe e-mails das notificações (null = sim). */
+    @Column(name = "email_notifications")
+    @Builder.Default
+    private Boolean emailNotifications = Boolean.TRUE;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
@@ -61,6 +66,10 @@ public class User implements UserDetails, Serializable {
     )
     @Builder.Default
     private Collection<Role> roles = new HashSet<>();
+
+    public boolean wantsEmailNotifications() {
+        return !Boolean.FALSE.equals(emailNotifications);
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
