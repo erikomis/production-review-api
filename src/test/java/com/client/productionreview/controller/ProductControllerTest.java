@@ -81,7 +81,7 @@ public class ProductControllerTest {
     }
 
     private ProductDetailDTO detail() {
-        ProductSummaryDTO summary = new ProductSummaryDTO(1L, "Phone", "d", "phone", 2L, "Celulares", 3L, "Eletrônicos",
+        ProductSummaryDTO summary = new ProductSummaryDTO(1L, "Phone", "d", "phone", 2L, "Celulares", "celulares", 3L, "Eletrônicos", "eletronicos",
                 null, 4.333, 3L);
         return ProductDetailDTO.from(summary, List.of(new ProductImageSummaryDTO(5L, "https://storage/img.png"),
                 new ProductImageSummaryDTO(6L, "https://storage/img2.png")));
@@ -98,6 +98,8 @@ public class ProductControllerTest {
                 .andExpect(jsonPath("$.subCategorieName").value("Celulares"))
                 .andExpect(jsonPath("$.categoryId").value(3))
                 .andExpect(jsonPath("$.categoryName").value("Eletrônicos"))
+                .andExpect(jsonPath("$.categorySlug").value("eletronicos"))
+                .andExpect(jsonPath("$.subCategorieSlug").value("celulares"))
                 .andExpect(jsonPath("$.averageNote").value(4.3))
                 .andExpect(jsonPath("$.totalReviews").value(3))
                 .andExpect(jsonPath("$.imageUrl").value("https://storage/img.png"))

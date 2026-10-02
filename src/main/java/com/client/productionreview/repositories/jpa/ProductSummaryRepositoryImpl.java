@@ -21,13 +21,13 @@ import java.util.Map;
 public class ProductSummaryRepositoryImpl implements ProductSummaryRepository {
 
     private static final String SELECT = "SELECT new com.client.productionreview.dtos.product.ProductSummaryDTO("
-            + "p.id, p.name, p.description, p.slug, s.id, s.name, c.id, c.name, p.createdAt, AVG(r.note), COUNT(r.id)) ";
+            + "p.id, p.name, p.description, p.slug, s.id, s.name, s.slug, c.id, c.name, c.slug, p.createdAt, AVG(r.note), COUNT(r.id)) ";
 
     private static final String FROM = "FROM Product p "
             + "JOIN SubCategory s ON s.id = p.subCategorieId "
             + "JOIN Category c ON c.id = s.categorieId ";
 
-    private static final String GROUP_BY = " GROUP BY p.id, p.name, p.description, p.slug, s.id, s.name, c.id, c.name, p.createdAt";
+    private static final String GROUP_BY = " GROUP BY p.id, p.name, p.description, p.slug, s.id, s.name, s.slug, c.id, c.name, c.slug, p.createdAt";
 
     @PersistenceContext
     private EntityManager entityManager;

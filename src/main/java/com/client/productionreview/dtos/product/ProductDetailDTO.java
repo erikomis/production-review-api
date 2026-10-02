@@ -27,8 +27,10 @@ public class ProductDetailDTO extends ProductSummaryDTO {
         detail.setSlug(summary.getSlug());
         detail.setSubCategorieId(summary.getSubCategorieId());
         detail.setSubCategorieName(summary.getSubCategorieName());
+        detail.setSubCategorieSlug(summary.getSubCategorieSlug());
         detail.setCategoryId(summary.getCategoryId());
         detail.setCategoryName(summary.getCategoryName());
+        detail.setCategorySlug(summary.getCategorySlug());
         detail.setAverageNote(summary.getAverageNote());
         detail.setTotalReviews(summary.getTotalReviews());
         detail.setCreatedAt(summary.getCreatedAt());

@@ -135,6 +135,8 @@ class ProductSummaryRepositoryTest {
         assertEquals(phones.getId(), a.getSubCategorieId());
         assertEquals("Eletrônicos", a.getCategoryName());
         assertEquals(electronics.getId(), a.getCategoryId());
+        assertEquals("eletronicos", a.getCategorySlug());
+        assertEquals("celulares", a.getSubCategorieSlug());
 
         // a review oculta (nota 1) não entra na média
         ProductSummaryDTO c = find(page, coffee);

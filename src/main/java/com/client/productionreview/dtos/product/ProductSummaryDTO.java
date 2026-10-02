@@ -22,8 +22,10 @@ public class ProductSummaryDTO implements Serializable {
     private String slug;
     private Long subCategorieId;
     private String subCategorieName;
+    private String subCategorieSlug;
     private Long categoryId;
     private String categoryName;
+    private String categorySlug;
     private String imageUrl;
     private Double averageNote;
     private long totalReviews;
@@ -31,7 +33,8 @@ public class ProductSummaryDTO implements Serializable {
 
     /** Usado pela projeção JPQL. */
     public ProductSummaryDTO(Long id, String name, String description, String slug,
-                             Long subCategorieId, String subCategorieName, Long categoryId, String categoryName,
+                             Long subCategorieId, String subCategorieName, String subCategorieSlug,
+                             Long categoryId, String categoryName, String categorySlug,
                              LocalDateTime createdAt, Double averageNote, Long totalReviews) {
         this.id = id;
         this.name = name;
@@ -39,8 +42,10 @@ public class ProductSummaryDTO implements Serializable {
         this.slug = slug;
         this.subCategorieId = subCategorieId;
         this.subCategorieName = subCategorieName;
+        this.subCategorieSlug = subCategorieSlug;
         this.categoryId = categoryId;
         this.categoryName = categoryName;
+        this.categorySlug = categorySlug;
         this.createdAt = createdAt;
         this.totalReviews = totalReviews == null ? 0L : totalReviews;
         this.averageNote = this.totalReviews == 0 ? null : RatingUtils.round(averageNote);

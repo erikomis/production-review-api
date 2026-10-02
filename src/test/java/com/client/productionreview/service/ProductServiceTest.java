@@ -205,7 +205,7 @@ public class ProductServiceTest {
 
 
     private ProductSummaryDTO summary() {
-        return new ProductSummaryDTO(1L, "Test Product", "d", "test-product", 1L, "Sub", 2L, "Cat", null, 4.25, 4L);
+        return new ProductSummaryDTO(1L, "Test Product", "d", "test-product", 1L, "Sub", "sub", 2L, "Cat", "cat", null, 4.25, 4L);
     }
 
     @Test
