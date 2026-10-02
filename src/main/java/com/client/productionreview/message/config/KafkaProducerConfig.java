@@ -1,6 +1,5 @@
 package com.client.productionreview.message.config;
 
-import com.client.productionreview.dtos.NotificationDto;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +25,8 @@ public class KafkaProducerConfig {
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        // sem broker disponível, o send() bloquearia a requisição por até 60s (padrão)
+        configProps.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 5000);
         return new DefaultKafkaProducerFactory<>(configProps);
     }
 
