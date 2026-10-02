@@ -127,13 +127,6 @@ export FRONTEND_URL=http://localhost:5173
 
 A API sobe em **http://localhost:8084**, e o Flyway cria as tabelas e os perfis `ADMIN`, `USER` e `MODERATOR`.
 
-> [!TIP]
-> Para ter um administrador, cadastre-se normalmente (`POST /api/v1/auth/sign-up`), ative pelo link do e-mail e associe o perfil:
-> ```sql
-> INSERT INTO users_roles (user_id, role_id)
-> SELECT u.id, r.id FROM user u, role r WHERE u.username = 'seu-usuario' AND r.name = 'ADMIN';
-> ```
-
 ### Variáveis de ambiente
 
 <details open>
