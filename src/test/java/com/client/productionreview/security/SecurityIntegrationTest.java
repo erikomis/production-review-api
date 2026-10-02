@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
@@ -242,5 +243,84 @@ class SecurityIntegrationTest {
                         .header(HttpHeaders.ORIGIN, "https://evil.example.com")
                         .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
                 .andExpect(status().isForbidden());
+    }
+
+    // ---------- fase 2: rotas de admin, minhas reviews e usuário inativo ----------
+
+    @Test
+    void adminRoutes_withoutLogin_return401() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/stats")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/users")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/reviews")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/import/jobs/latest")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/admin/activity")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminRoutes_withCommonUser_return403() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/stats").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/users").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/admin/users/{id}/admin", commonUser.getId()).cookie(accessCookie(commonUser))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"admin\":true}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/import/open-food-facts").cookie(accessCookie(commonUser)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminRoutes_withAdmin_return200() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/stats").cookie(accessCookie(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totals.users").value(2))
+                .andExpect(jsonPath("$.reviewsPerDay.length()").value(30));
+        mockMvc.perform(get("/api/v1/admin/users").cookie(accessCookie(admin)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(2));
+        mockMvc.perform(get("/api/v1/admin/reviews").cookie(accessCookie(admin)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/admin/import/jobs/latest").cookie(accessCookie(admin)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void adminActivity_logsServiceDown_returns503() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/activity").cookie(accessCookie(admin)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.message").value("Serviço de auditoria indisponível"));
+    }
+
+    @Test
+    void myReviews_requiresLogin() throws Exception {
+        when(reviewService.getMyReviews(anyLong(), any())).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/review/me")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/review/me").cookie(accessCookie(commonUser))).andExpect(status().isOk());
+    }
+
+    @Test
+    void helpful_requiresLogin() throws Exception {
+        mockMvc.perform(post("/api/v1/review/{id}/helpful", 1L)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void categoryBySlug_isPublic() throws Exception {
+        when(categoryService.getCategoryBySlug("bebidas"))
+                .thenReturn(Category.builder().id(1L).name("Bebidas").slug("bebidas").subCategories(List.of()).build());
+
+        mockMvc.perform(get("/api/v1/category/slug/{slug}", "bebidas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("bebidas"));
+    }
+
+    @Test
+    void inactiveUser_withOldToken_returns401() throws Exception {
+        Cookie cookie = accessCookie(commonUser);
+        mockMvc.perform(get("/api/v1/user/me").cookie(cookie)).andExpect(status().isOk());
+
+        commonUser.setActive(false);
+        userRepository.save(commonUser);
+
+        // desativado por um admin: o token emitido antes deixa de valer
+        mockMvc.perform(get("/api/v1/user/me").cookie(cookie)).andExpect(status().isUnauthorized());
     }
 }
