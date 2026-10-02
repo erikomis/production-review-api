@@ -71,6 +71,10 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PERMIT_ALL_LIST).permitAll()
+                        // além do @PreAuthorize dos controllers
+                        .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
+                        // exceção dentro de /api/v1/review/** (GET público)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/review/me").authenticated()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_LIST).permitAll()
                         .anyRequest().authenticated()
                 ).addFilterBefore(new AuthenticationFilter(jwtProvider, userRepository), UsernamePasswordAuthenticationFilter.class);
