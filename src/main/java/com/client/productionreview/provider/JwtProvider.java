@@ -39,6 +39,13 @@ public class JwtProvider {
     @Value("${security.token.expiration.refresh}")
     private Long expirationRefresh;
 
+    /** Lax por padrão: o cookie não acompanha POSTs vindos de outros sites. */
+    @Value("${app.cookie.same-site:Lax}")
+    private String sameSite = "Lax";
+
+    @Value("${app.cookie.secure:true}")
+    private boolean secureCookie = true;
+
     public String getTokenFromCookie(HttpServletRequest request) {
         var cookie = WebUtils.getCookie(request, COOKIE);
         return cookie != null ? cookie.getValue() : null;
@@ -114,8 +121,9 @@ public class JwtProvider {
         return ResponseCookie.from(name, value)
                 .path("/")
                 .maxAge(maxAge)
-                .secure(true)
+                .secure(secureCookie)
                 .httpOnly(true)
+                .sameSite(sameSite)
                 .build();
     }
 
