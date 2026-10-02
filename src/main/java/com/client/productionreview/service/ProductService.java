@@ -16,5 +16,7 @@ public interface ProductService {
 
         public  Product getProduct(Long id);
 
+        public Product getProductBySlug(String slug);
+
         public Page<Product> getAllProduct(Pageable pageable, String search);
 }

@@ -81,6 +81,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "product", key = "'slug:' + #slug")
+    public Product getProductBySlug(String slug) {
+        return productRepository.findBySlug(slug).orElseThrow(() -> new NotFoundException("Product not found"));
+    }
+
+    @Override
     @Cacheable(value = "product")
     public Page<Product> getAllProduct(Pageable pageable, String search) {
 

@@ -93,6 +93,16 @@ public class ProductControllerTest {
     }
 
     @Test
+    void getProductBySlug_shouldReturnProduct() throws Exception {
+        when(productService.getProductBySlug("phone")).thenReturn(product());
+
+        mockMvc.perform(get("/api/v1/production/slug/{slug}", "phone"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.slug").value("phone"));
+    }
+
+    @Test
     void listProducts_passesPaginationAndSearch() throws Exception {
         when(productService.getAllProduct(any(Pageable.class), eq("pho"))).thenReturn(new PageImpl<>(List.of(product())));
 

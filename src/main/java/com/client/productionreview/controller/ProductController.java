@@ -66,6 +66,13 @@ public class ProductController {
     }
 
 
+    @GetMapping("/slug/{slug}")
+    @ResponseStatus(HttpStatus.OK)
+    public ProductResponseDTO getProductionBySlug(@PathVariable("slug") String slug) {
+        return productMapper.toDTO(productService.getProductBySlug(slug));
+    }
+
+
     @PutMapping( value = "/update/{id}")
     @SecurityRequirement(name = "jwt_auth")
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")

@@ -163,6 +163,20 @@ public class ProductServiceTest {
 
 
     @Test
+    void testGetProductBySlug() {
+        when(productRepository.findBySlug("smartphone")).thenReturn(Optional.of(product));
+
+        assertEquals(product, productService.getProductBySlug("smartphone"));
+    }
+
+    @Test
+    void testGetProductBySlugNotFound() {
+        when(productRepository.findBySlug("nope")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> productService.getProductBySlug("nope"));
+    }
+
+    @Test
     void testGetProductNotFound() {
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
 
