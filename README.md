@@ -329,18 +329,38 @@ Nenhum teste chama o Open Food Facts de verdade, e o throttle é configurável p
 
 ## 🔁 CI/CD e deploy
 
+As imagens são publicadas **privadas** no GitHub Container Registry (`ghcr.io`), e não mais no Docker Hub.
+
 ```mermaid
 flowchart LR
     PR["Pull request"] --> T["testings<br/>mvn verify + JaCoCo"]
     Push["Push na main"] --> T
-    T -->|sucesso no push da main| D["deployment<br/>build da imagem Docker"]
-    D --> Hub[("Docker Hub")] --> VPS["VPS<br/>docker-compose pull && up"]
+    T -->|sucesso no push da main| P["publish<br/>build do commit testado"]
+    P --> GHCR[("ghcr.io (privado)<br/>latest · sha-commit")]
+    GHCR --> D["deploy<br/>login temporário + pull + up"]
+    D --> VPS["VPS<br/>docker compose"]
 ```
 
 - **`testings.yml`**: roda em PRs e no push da `main`; publica os relatórios de cobertura e de testes.
-- **`deployament.yml`**: só dispara depois que os testes do push na `main` passam, e builda exatamente o commit testado.
+- **`deployament.yml`**: só dispara depois que os testes do push na `main` passam.
+  - **publish**: builda exatamente o commit testado e publica `ghcr.io/erikomis/production-review-api` com as tags `latest` e `sha-<commit>`, autenticando com o `GITHUB_TOKEN` do próprio workflow.
+  - **deploy**: entra na VPS por SSH, faz login no GHCR com o token temporário do job, sobe a imagem daquele commit (`IMAGE_TAG=sha-<commit>`) e faz logout. O token expira ao fim do job, então **nenhuma credencial fica salva na VPS**.
 - **Imagem Docker**: build multi-stage com cache de dependências; o runtime usa JRE 17 com usuário sem privilégios.
-- **`docker-compose.yml`**: API, Prometheus e Grafana. O `docker-compose.dev.yml` inclui também MariaDB e Redis.
+- **`docker-compose.yml`**: API (imagem do GHCR), Prometheus e Grafana. O `docker-compose.dev.yml` inclui também MariaDB e Redis.
+
+### Configuração no GitHub
+
+| Tipo | Nome | Para quê |
+|---|---|---|
+| Secret | `HOST`, `USERNAME`, `SSH_KEY` | Acesso SSH à VPS |
+| Variável (opcional) | `DEPLOY_DIR` | Pasta do `docker-compose.yml` na VPS (padrão: `api`) |
+
+Os secrets `DOCKER_USERNAME` e `DOCKER_PASSWORD` não são mais usados e podem ser apagados.
+
+> [!IMPORTANT]
+> **Uma única vez, antes do primeiro deploy:**
+> 1. Copie o `docker-compose.yml` deste repositório para a pasta da VPS. O arquivo antigo aponta para a imagem pública do Docker Hub e continuaria subindo a versão velha.
+> 2. Depois do primeiro publish, confira em **Perfil → Packages → production-review-api → Package settings** que a visibilidade está **Private**, e que em *Manage Actions access* este repositório tem acesso de leitura.
 
 <details>
 <summary><b>📁 Estrutura do projeto</b></summary>
