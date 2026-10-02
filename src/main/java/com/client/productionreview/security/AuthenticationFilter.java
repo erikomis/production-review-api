@@ -36,7 +36,7 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
     }
 
     /**
-     * Token inválido ou usuário inexistente não lança exceção: a requisição segue
+     * Token inválido, usuário inexistente ou inativo não lança exceção: a requisição segue
      * sem autenticação e o Spring Security responde 401 se a rota exigir login.
      */
     private void authByToken(String token) {
@@ -45,7 +45,8 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
             return;
         }
 
-        userRepository.findById(userId).ifPresent(user -> {
+        // usuário desativado por um admin perde o acesso mesmo com token ainda válido
+        userRepository.findById(userId).filter(user -> Boolean.TRUE.equals(user.getActive())).ifPresent(user -> {
             var userAuth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(userAuth);
         });
