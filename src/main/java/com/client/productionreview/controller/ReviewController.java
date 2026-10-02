@@ -1,6 +1,7 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ReviewMapper;
+import com.client.productionreview.dtos.review.HelpfulResponseDTO;
 import com.client.productionreview.dtos.review.ReviewRequestDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
@@ -55,7 +56,22 @@ public class ReviewController {
 
     @GetMapping("/{id}")
     public ReviewResponseDTO getReview(@PathVariable("id") Long id) {
-        return reviewMapper.toDTO(reviewService.getReview(id));
+        return reviewService.getReviewDetails(id);
+    }
+
+    @GetMapping("/me")
+    @SecurityRequirement(name = "jwt_auth")
+    public Page<ReviewResponseDTO> getMyReviews(@RequestParam(value = "page", required = false) Integer page,
+                                                @RequestParam(value = "size", required = false) Integer size,
+                                                @AuthenticationPrincipal User user) {
+        var pageable = PaginationUtils.createPageable(page, size, null, null);
+        return reviewService.getMyReviews(user.getId(), pageable);
+    }
+
+    @PostMapping("/{id}/helpful")
+    @SecurityRequirement(name = "jwt_auth")
+    public HelpfulResponseDTO toggleHelpful(@PathVariable("id") Long id, @AuthenticationPrincipal User user) {
+        return reviewService.toggleHelpful(id, user);
     }
 
 
@@ -71,9 +87,10 @@ public class ReviewController {
     public Page<ReviewResponseDTO> getReviewsByProduct(@PathVariable("productId") Long productId,
                                                        @RequestParam(value = "page", required = false) Integer page,
                                                        @RequestParam(value = "size", required = false) Integer size,
-                                                       @RequestParam(value = "sort", required = false) Sort.Direction sort) {
-        var pageable = PaginationUtils.createPageable(page, size, "createdAt", sort != null ? sort.name() : Sort.Direction.DESC.name());
-        return reviewService.getReviewsByProduct(productId, pageable);
+                                                       @RequestParam(value = "note", required = false) Long note,
+                                                       @RequestParam(value = "sort", required = false) String sort) {
+        var pageable = PaginationUtils.createPageable(page, size, null, null);
+        return reviewService.getReviewsByProduct(productId, note, sort, pageable);
     }
 
     @GetMapping("/product/{productId}/summary")

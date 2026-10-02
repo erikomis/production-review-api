@@ -1,9 +1,13 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ReviewMapper;
+import com.client.productionreview.dtos.review.HelpfulResponseDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
+import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.GlobalException;
+import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.jpa.ReviewStatus;
 import com.client.productionreview.model.jpa.Review;
 import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.service.ReviewService;
@@ -26,7 +30,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -157,17 +163,99 @@ class ReviewControllerTest {
     }
 
     @Test
-    void listByProduct_defaultsToNewestFirst() throws Exception {
-        when(reviewService.getReviewsByProduct(eq(2L), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(ReviewResponseDTO.builder().id(1L).build())));
+    void listByProduct_passesNoteAndSort() throws Exception {
+        when(reviewService.getReviewsByProduct(eq(2L), eq(4L), eq("helpful"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ReviewResponseDTO.builder().id(1L).helpfulCount(3).helpfulByMe(true)
+                        .status(ReviewStatus.VISIBLE).productSlug("phone").build())));
 
-        mockMvc.perform(get("/api/v1/review/product/{productId}", 2L))
+        mockMvc.perform(get("/api/v1/review/product/{productId}", 2L)
+                        .param("note", "4").param("sort", "helpful").param("size", "5"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(1));
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].helpfulCount").value(3))
+                .andExpect(jsonPath("$.content[0].helpfulByMe").value(true))
+                .andExpect(jsonPath("$.content[0].status").value("VISIBLE"))
+                .andExpect(jsonPath("$.content[0].productSlug").value("phone"));
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
-        verify(reviewService).getReviewsByProduct(eq(2L), captor.capture());
-        assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
+        verify(reviewService).getReviewsByProduct(eq(2L), eq(4L), eq("helpful"), captor.capture());
+        assertEquals(5, captor.getValue().getPageSize());
+    }
+
+    @Test
+    void listByProduct_invalidSort_returnsBadRequest() throws Exception {
+        when(reviewService.getReviewsByProduct(eq(2L), any(), eq("random"), any(Pageable.class)))
+                .thenThrow(new BadRequestException("Ordenação inválida: random"));
+
+        mockMvc.perform(get("/api/v1/review/product/{productId}", 2L).param("sort", "random"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Ordenação inválida: random"));
+    }
+
+    @Test
+    void me_returnsReviewsOfAuthenticatedUserIncludingHidden() throws Exception {
+        when(reviewService.getMyReviews(eq(10L), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
+                ReviewResponseDTO.builder().id(7L).status(ReviewStatus.HIDDEN).moderationReason("spam").build())));
+
+        mockMvc.perform(get("/api/v1/review/me").param("page", "0").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].status").value("HIDDEN"))
+                .andExpect(jsonPath("$.content[0].moderationReason").value("spam"));
+    }
+
+    @Test
+    void helpful_togglesForAuthenticatedUser() throws Exception {
+        when(reviewService.toggleHelpful(1L, user)).thenReturn(new HelpfulResponseDTO(1L, 4L, true));
+
+        mockMvc.perform(post("/api/v1/review/{id}/helpful", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reviewId").value(1))
+                .andExpect(jsonPath("$.helpfulCount").value(4))
+                .andExpect(jsonPath("$.helpfulByMe").value(true));
+    }
+
+    @Test
+    void helpful_ownReview_returnsBadRequest() throws Exception {
+        when(reviewService.toggleHelpful(1L, user)).thenThrow(new BadRequestException("própria"));
+
+        mockMvc.perform(post("/api/v1/review/{id}/helpful", 1L))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void helpful_hiddenReview_returnsNotFound() throws Exception {
+        when(reviewService.toggleHelpful(1L, user)).thenThrow(new NotFoundException("Review not found"));
+
+        mockMvc.perform(post("/api/v1/review/{id}/helpful", 1L))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getById_returnsDetails() throws Exception {
+        when(reviewService.getReviewDetails(1L)).thenReturn(ReviewResponseDTO.builder().id(1L).productName("Phone")
+                .userName("John").helpfulCount(2).build());
+
+        mockMvc.perform(get("/api/v1/review/{id}", 1L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.productName").value("Phone"))
+                .andExpect(jsonPath("$.helpfulCount").value(2))
+                .andExpect(jsonPath("$.helpfulByMe").value(false));
+    }
+
+    @Test
+    void summary_includesDistribution() throws Exception {
+        Map<String, Long> distribution = new LinkedHashMap<>();
+        distribution.put("1", 0L);
+        distribution.put("2", 1L);
+        distribution.put("3", 0L);
+        distribution.put("4", 2L);
+        distribution.put("5", 5L);
+        when(reviewService.getProductSummary(2L)).thenReturn(new ReviewSummaryDTO(2L, 8L, 4.4, distribution));
+
+        mockMvc.perform(get("/api/v1/review/product/{productId}/summary", 2L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.distribution.1").value(0))
+                .andExpect(jsonPath("$.distribution.5").value(5));
     }
 
     @Test

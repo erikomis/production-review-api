@@ -1,5 +1,7 @@
 package com.client.productionreview.repository;
 
+import com.client.productionreview.dtos.review.ReviewSearch;
+import com.client.productionreview.dtos.review.ReviewSort;
 import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.model.jpa.Review;
@@ -95,7 +97,7 @@ class ProductAndReviewRepositoryTest {
         review(phone, 3);
         review(laptop, 2);
 
-        var page = reviewRepository.findByProductIdWithDetails(phone.getId(), PageRequest.of(0, 1));
+        var page = reviewRepository.searchDetails(ReviewSearch.builder().productId(phone.getId()).build(), PageRequest.of(0, 1));
 
         assertEquals(2, page.getTotalElements());
         assertEquals(1, page.getContent().size());
@@ -108,8 +110,7 @@ class ProductAndReviewRepositoryTest {
         review(phone, 5);
         review(laptop, 2);
 
-        var page = reviewRepository.findAllWithDetails(
-                PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("createdAt").descending()));
+        var page = reviewRepository.searchDetails(ReviewSearch.builder().sort(ReviewSort.recent).build(), PageRequest.of(0, 10));
 
         assertEquals(2, page.getTotalElements());
         assertEquals("Notebook Pro", page.getContent().get(0).getProductName());

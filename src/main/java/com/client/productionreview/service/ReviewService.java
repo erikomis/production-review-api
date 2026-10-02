@@ -1,6 +1,7 @@
 package com.client.productionreview.service;
 
 import com.client.productionreview.dtos.NotificationDto;
+import com.client.productionreview.dtos.review.HelpfulResponseDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
 import com.client.productionreview.model.jpa.Review;
@@ -20,11 +21,22 @@ public interface ReviewService {
 
      Review getReview(Long id);
 
+     /** Review com nomes e "útil"; ocultas só aparecem para o autor ou ADMIN (senão 404). */
+     ReviewResponseDTO getReviewDetails(Long id);
+
+     /** Reviews visíveis; a direção de createdAt do pageable define recent/oldest. */
      Page<ReviewResponseDTO> getReviews(Pageable pageable);
 
-     Page<ReviewResponseDTO> getReviewsByProduct(Long productId, Pageable pageable);
+     /** Reviews visíveis do produto. {@code note} 1..5 opcional; {@code sort} recent|oldest|highest|lowest|helpful. */
+     Page<ReviewResponseDTO> getReviewsByProduct(Long productId, Long note, String sort, Pageable pageable);
+
+     /** Reviews do usuário, inclusive as ocultadas. */
+     Page<ReviewResponseDTO> getMyReviews(Long userId, Pageable pageable);
 
      ReviewSummaryDTO getProductSummary(Long productId);
+
+     /** Marca/desmarca a review como útil para o usuário. */
+     HelpfulResponseDTO toggleHelpful(Long reviewId, User user);
 
      Flux<NotificationDto> getCommentStream();
 }
