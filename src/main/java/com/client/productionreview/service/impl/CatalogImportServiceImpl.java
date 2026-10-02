@@ -80,7 +80,7 @@ public class CatalogImportServiceImpl implements CatalogImportService {
                 }));
     }
 
-    CatalogImportServiceImpl(CategoryRepository categoryRepository, SubCategoryRepository subCategoryRepository,
+    public CatalogImportServiceImpl(CategoryRepository categoryRepository, SubCategoryRepository subCategoryRepository,
                              ProductRepository productRepository, ProductImageRepository productImageRepository,
                              OpenFoodFactsClient openFoodFactsClient, DomainEventPublisher eventPublisher,
                              CacheManager cacheManager, PlatformTransactionManager transactionManager, Executor executor) {

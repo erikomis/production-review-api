@@ -2,6 +2,7 @@ package com.client.productionreview.service;
 
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
@@ -11,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 
 import java.util.List;
+import java.util.Optional;
 
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -268,4 +271,28 @@ class CategoryServiceTest {
 
     }
 
+
+    @Test
+    void givenSlug_whenGetCategoryBySlug_thenReturnCategoryOrNotFound() {
+        Category category = Category.builder().id(1L).name("Bebidas").slug("bebidas").build();
+        Mockito.when(categorieRepository.findBySlug("bebidas")).thenReturn(Optional.of(category));
+        Mockito.when(categorieRepository.findBySlug("nope")).thenReturn(Optional.empty());
+
+        assertEquals(category, categoryService.getCategoryBySlug("bebidas"));
+        assertThrows(NotFoundException.class, () -> categoryService.getCategoryBySlug("nope"));
+    }
+
+    @Test
+    void givenCategory_whenAddCategory_thenPublishesEvent() {
+        Category category = Category.builder().name("Bebidas").slug("bebidas").build();
+        Mockito.when(categorieRepository.findByName("Bebidas")).thenReturn(Optional.empty());
+        Mockito.when(categorieRepository.save(category)).thenAnswer(inv -> {
+            category.setId(5L);
+            return category;
+        });
+
+        categoryService.addCategory(category);
+
+        Mockito.verify(eventPublisher).publish(Mockito.eq(EventType.CATEGORY_CREATED), Mockito.eq(5L), Mockito.anyString());
+    }
 }
