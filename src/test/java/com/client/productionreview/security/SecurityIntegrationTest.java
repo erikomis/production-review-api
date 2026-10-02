@@ -332,4 +332,51 @@ class SecurityIntegrationTest {
         // desativado por um admin: o token emitido antes deixa de valer
         mockMvc.perform(get("/api/v1/user/me").cookie(cookie)).andExpect(status().isUnauthorized());
     }
+
+    // ---------- fase 3: Origin e cookies ----------
+
+    @Test
+    void post_fromUnknownOrigin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .header(HttpHeaders.ORIGIN, "https://evil.example.com")
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Origem não permitida"))
+                .andExpect(jsonPath("$.httpStatus").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.statusCode").value(403));
+        mockMvc.perform(post("/api/v1/auth/sign-in").header(HttpHeaders.REFERER, "https://evil.example.com/x")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"a\",\"password\":\"b\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void post_fromAllowedOrigin_orWithoutOrigin_passes() throws Exception {
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void get_withoutOrigin_orFromOtherOrigin_passes() throws Exception {
+        mockMvc.perform(get("/api/v1/category/list")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/category/list").header(HttpHeaders.ORIGIN, "https://evil.example.com"))
+                .andExpect(status().isForbidden()); // recusado pelo CORS, não pelo filtro de Origin
+    }
+
+    @Test
+    void sessionCookies_haveSameSiteSecureAndHttpOnly() {
+        String token = jwtProvider.generateToken(admin.getId()).toString();
+        String refresh = jwtProvider.generateRefreshToken(admin.getId()).toString();
+        String cleared = jwtProvider.cleanToken().toString();
+
+        for (String cookie : java.util.List.of(token, refresh, cleared)) {
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("SameSite=Lax"), cookie);
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("Secure"), cookie);
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("HttpOnly"), cookie);
+        }
+    }
 }

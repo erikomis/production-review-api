@@ -1,6 +1,7 @@
 package com.client.productionreview.metrics;
 
 import com.client.productionreview.model.event.EventType;
+import com.client.productionreview.security.ratelimit.RateLimitRule;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  *       (avaliações criadas, moderação, importações, logins...).</li>
  *   <li>{@code reviewstore_kafka_publish_total{type,result}}: entrega dos eventos de auditoria ao Kafka
  *       ({@code result} = success | failure).</li>
+ *   <li>{@code reviewstore_rate_limit_rejections_total{rule}}: requisições recusadas com 429.</li>
  * </ul>
  */
 @Component
@@ -29,6 +31,20 @@ public class BusinessMetrics {
             kafkaPublishCounter(type.name(), true);
             kafkaPublishCounter(type.name(), false);
         }
+        for (RateLimitRule rule : RateLimitRule.values()) {
+            rateLimitCounter(rule.getId());
+        }
+    }
+
+    public void rateLimitRejected(String rule) {
+        rateLimitCounter(rule).increment();
+    }
+
+    private Counter rateLimitCounter(String rule) {
+        return Counter.builder("reviewstore.rate.limit.rejections")
+                .description("Requisições recusadas pelo limite de tentativas, por regra")
+                .tag("rule", rule)
+                .register(registry);
     }
 
     public void domainEvent(EventType type) {
