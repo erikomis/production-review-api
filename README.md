@@ -27,6 +27,7 @@ Alimenta o [site público](https://github.com/erikomis/dashboard-production-revi
 [Endpoints](#-endpoints) ·
 [Segurança](#-segurança) ·
 [Testes](#-testes) ·
+[Observabilidade](#-observabilidade) ·
 [Deploy](#-cicd-e-deploy)
 
 </div>
@@ -85,7 +86,7 @@ flowchart LR
 | 🔔 **Tempo real** | Cada avaliação nova também é emitida num stream **SSE** consumido pelo painel |
 | ⚡ **Cache** | Redis com evicção consistente nas escritas |
 | 📖 **Documentação** | OpenAPI 3 + Swagger UI em `/swagger-ui.html` |
-| 📈 **Observabilidade** | Actuator + Prometheus em `/actuator/prometheus`, com Grafana no `docker-compose` |
+| 📈 **Observabilidade** | Prometheus + Grafana provisionados: dashboard pronto, métricas de negócio, latência p95/p99 e alertas por e-mail ([detalhes](#-observabilidade)) |
 
 ## 🚀 Como rodar
 
@@ -326,6 +327,51 @@ Tipos: `USER_SIGNED_UP`, `USER_ACTIVATED`, `USER_LOGGED_IN`, `USER_ROLE_CHANGED`
 | **Unitários** | JWT (tipos, expiração, assinatura) e paginação |
 
 Nenhum teste chama o Open Food Facts de verdade, e o throttle é configurável para os testes não dormirem.
+
+## 📈 Observabilidade
+
+<p align="center">
+  <img src="docs/grafana.png" alt="Dashboard ReviewStore · API no Grafana: status, requisições, latência, negócio e JVM" width="100%" />
+</p>
+
+O `docker-compose.yml` sobe **Prometheus** e **Grafana** já configurados: o data source, o dashboard e os alertas são provisionados a partir de `config/`, e nada precisa ser criado pela interface.
+
+| Peça | O que faz |
+|---|---|
+| **Métricas** | A API expõe `/actuator/prometheus` na **porta de gerenciamento 8085**, que não é publicada; só o Prometheus, na rede interna, a acessa. A porta pública 8084 não tem `/actuator`. O serviço de logs usa a 8090. |
+| **Health** | `GET :8085/actuator/health` responde só `UP`/`DOWN` para anônimos. Os detalhes (banco, Redis, disco) aparecem apenas para um ADMIN logado. Também há `/actuator/health/liveness` e `/readiness`. |
+| **Dashboard** `ReviewStore · API` | Status e uptime, requisições/s, % de 5xx, latência p50/p95/p99, rotas mais chamadas e mais lentas, ações de negócio, fluxo da auditoria (API → Kafka → logs), heap, CPU, GC, pool do MariaDB, Redis e logs de erro. |
+| **Alertas** (e-mail) | API fora do ar · 5xx acima de 5% · p95 acima de 1 s · pool do banco esgotado · heap acima de 90% · eventos de auditoria perdidos · mensagens na DLT. |
+
+**Métricas de negócio** (além das padrão do Spring Boot):
+
+| Métrica | Labels | Significado |
+|---|---|---|
+| `reviewstore_domain_events_total` | `type`, `entity` | Ações concluídas: avaliações, moderação, catálogo, logins, importações |
+| `reviewstore_kafka_publish_total` | `type`, `result` | Entrega dos eventos de auditoria ao Kafka (`success`/`failure`) |
+| `reviewstore_logs_events_total` | `type`, `result` | No serviço de logs: `stored`, `duplicate` ou `dead_letter` |
+| `http_server_requests_seconds_bucket` | `uri`, `status`, ... | Histograma de latência (p95/p99) |
+
+**Acesso.** Grafana (3000) e Prometheus (9090) escutam só em `127.0.0.1` na VPS. Use um túnel SSH:
+
+```bash
+ssh -L 3000:localhost:3000 -L 9090:localhost:9090 usuario@sua-vps
+# Grafana: http://localhost:3000 (usuário/senha do .env) · Prometheus: http://localhost:9090
+```
+
+ou publique o Grafana por um proxy reverso com HTTPS na `web-network`, definindo `GRAFANA_ROOT_URL`.
+
+| Variável (`.env`) | Padrão | Descrição |
+|---|---|---|
+| `GRAFANA_ADMIN_PASSWORD` | **obrigatória** | Senha do admin do Grafana (o compose não sobe sem ela) |
+| `GRAFANA_ADMIN_USER` | `admin` | Usuário admin |
+| `ALERT_EMAIL` | `MAIL_USERNAME` | Destinatário(s) dos alertas, separados por `;` |
+| `GRAFANA_SMTP_HOST` | `smtp.gmail.com:587` | SMTP dos alertas (usa `MAIL_USERNAME`/`MAIL_PASSWORD`) |
+| `GRAFANA_ROOT_URL` | `http://localhost:3000` | URL pública do Grafana, usada nos links dos e-mails |
+| `PROMETHEUS_RETENTION` | `15d` | Quanto tempo de métricas guardar |
+
+> [!NOTE]
+> Os alertas foram validados de ponta a ponta: com a API derrubada, o e-mail **"[FIRING] API fora do ar"** chega em cerca de 2 minutos, e o **"[RESOLVED]"** chega quando ela volta.
 
 ## 🔁 CI/CD e deploy
 
