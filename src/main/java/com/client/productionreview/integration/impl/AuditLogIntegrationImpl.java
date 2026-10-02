@@ -2,6 +2,8 @@ package com.client.productionreview.integration.impl;
 
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.integration.AuditLogIntegration;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +27,8 @@ public class AuditLogIntegrationImpl implements AuditLogIntegration {
 
     static final String TOKEN_HEADER = "X-Internal-Token";
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     static final Set<String> LOG_PARAMS = Set.of("page", "size", "type", "entityType", "userId", "search", "from", "to");
 
     static final Set<String> SUMMARY_PARAMS = Set.of("from", "to");
@@ -42,6 +46,20 @@ public class AuditLogIntegrationImpl implements AuditLogIntegration {
     @Override
     public ResponseEntity<String> getLogs(MultiValueMap<String, String> params) {
         return forward("/api/v1/logs", filter(params, LOG_PARAMS));
+    }
+
+    @Override
+    public JsonNode getLogsJson(MultiValueMap<String, String> params) {
+        ResponseEntity<String> response = getLogs(params);
+        if (!response.getStatusCode().is2xxSuccessful()) {
+            throw new GlobalException("Parâmetros de atividade inválidos", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            return OBJECT_MAPPER.readTree(response.getBody() == null ? "{}" : response.getBody());
+        } catch (Exception e) {
+            log.warn("Resposta inválida do serviço de logs: {}", e.getMessage());
+            throw new GlobalException(UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE);
+        }
     }
 
     @Override

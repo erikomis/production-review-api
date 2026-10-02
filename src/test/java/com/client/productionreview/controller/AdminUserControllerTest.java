@@ -42,6 +42,10 @@ class AdminUserControllerTest {
     @MockBean
     private AdminUserService adminUserService;
 
+    // dependência nova do controller (exportação CSV)
+    @MockBean
+    private com.client.productionreview.service.AdminExportService adminExportService;
+
     private final User admin = User.builder().id(1L).name("Administrador").build();
 
     @BeforeEach
@@ -105,5 +109,17 @@ class AdminUserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("active: Active is required"));
+    }
+
+    @Test
+    void exportCsv_returnsAttachment() throws Exception {
+        byte[] csv = com.client.productionreview.utils.CsvWriter.write(List.of("ID"), List.of(List.of(2L)));
+        when(adminExportService.usersCsv("mar", "USER", true)).thenReturn(csv);
+
+        mockMvc.perform(get("/api/v1/admin/users/export.csv").param("search", "mar").param("role", "USER").param("active", "true"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment; filename=\"usuarios-")))
+                .andExpect(content().bytes(csv));
     }
 }

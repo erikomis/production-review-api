@@ -42,6 +42,10 @@ class AdminStatsAndActivityControllerTest {
     @MockBean
     private AuditLogIntegration auditLogIntegration;
 
+    // dependência nova do AdminActivityController (exportação CSV)
+    @MockBean
+    private com.client.productionreview.service.AdminExportService adminExportService;
+
     @Test
     void stats_defaultsTo30Days() throws Exception {
         when(statsService.getStats(30)).thenReturn(StatsDTO.builder()
@@ -98,5 +102,21 @@ class AdminStatsAndActivityControllerTest {
         mockMvc.perform(get("/api/v1/admin/activity/summary").param("from", "2026-10-01"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.message").value("Serviço de auditoria indisponível"));
+    }
+
+    @Test
+    void activityExport_forwardsFilters() throws Exception {
+        byte[] csv = com.client.productionreview.utils.CsvWriter.write(java.util.List.of("Data"), java.util.List.of());
+        when(adminExportService.activityCsv(any())).thenReturn(csv);
+
+        mockMvc.perform(get("/api/v1/admin/activity/export.csv").param("type", "REVIEW_CREATED"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment; filename=\"atividade-")))
+                .andExpect(content().bytes(csv));
+
+        org.mockito.ArgumentCaptor<org.springframework.util.MultiValueMap<String, String>> params =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.util.MultiValueMap.class);
+        verify(adminExportService).activityCsv(params.capture());
+        assertEquals("REVIEW_CREATED", params.getValue().getFirst("type"));
     }
 }

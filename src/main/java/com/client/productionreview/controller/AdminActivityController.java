@@ -1,6 +1,7 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.integration.AuditLogIntegration;
+import com.client.productionreview.service.AdminExportService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,8 +20,17 @@ public class AdminActivityController {
 
     private final AuditLogIntegration auditLogIntegration;
 
-    public AdminActivityController(AuditLogIntegration auditLogIntegration) {
+    private final AdminExportService adminExportService;
+
+    public AdminActivityController(AuditLogIntegration auditLogIntegration, AdminExportService adminExportService) {
         this.auditLogIntegration = auditLogIntegration;
+        this.adminExportService = adminExportService;
+    }
+
+    /** Mesmos filtros da atividade (type, entityType, userId, search, from, to); até 10.000 linhas. */
+    @GetMapping("/export.csv")
+    public ResponseEntity<byte[]> exportCsv(@RequestParam MultiValueMap<String, String> params) {
+        return CsvResponses.attachment("atividade", adminExportService.activityCsv(params));
     }
 
     @GetMapping

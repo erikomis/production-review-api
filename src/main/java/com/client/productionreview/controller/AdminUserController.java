@@ -4,6 +4,7 @@ import com.client.productionreview.dtos.admin.AdminUserDTO;
 import com.client.productionreview.dtos.admin.UserActiveRequestDTO;
 import com.client.productionreview.dtos.admin.UserAdminRequestDTO;
 import com.client.productionreview.model.jpa.User;
+import com.client.productionreview.service.AdminExportService;
 import com.client.productionreview.service.AdminUserService;
 import com.client.productionreview.utils.PaginationUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,8 +26,19 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
-    public AdminUserController(AdminUserService adminUserService) {
+    private final AdminExportService adminExportService;
+
+    public AdminUserController(AdminUserService adminUserService, AdminExportService adminExportService) {
         this.adminUserService = adminUserService;
+        this.adminExportService = adminExportService;
+    }
+
+    /** Mesmos filtros da listagem; até 10.000 linhas. */
+    @GetMapping("/export.csv")
+    public ResponseEntity<byte[]> exportCsv(@RequestParam(value = "search", required = false) String search,
+                                            @RequestParam(value = "role", required = false) String role,
+                                            @RequestParam(value = "active", required = false) Boolean active) {
+        return CsvResponses.attachment("usuarios", adminExportService.usersCsv(search, role, active));
     }
 
     @GetMapping

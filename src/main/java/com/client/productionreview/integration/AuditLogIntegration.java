@@ -9,6 +9,9 @@ public interface AuditLogIntegration {
     /** GET /api/v1/logs; a resposta JSON é repassada sem alteração. */
     ResponseEntity<String> getLogs(MultiValueMap<String, String> params);
 
+    /** GET /api/v1/logs já convertido (usado na exportação CSV). */
+    com.fasterxml.jackson.databind.JsonNode getLogsJson(MultiValueMap<String, String> params);
+
     /** GET /api/v1/logs/summary. */
     ResponseEntity<String> getSummary(MultiValueMap<String, String> params);
 }
