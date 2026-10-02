@@ -1,6 +1,7 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ReviewMapper;
+import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.model.jpa.Review;
@@ -123,19 +124,28 @@ class ReviewControllerTest {
     }
 
     @Test
-    void list_returnsDtos() throws Exception {
-        when(reviewService.getReviews()).thenReturn(List.of(review()));
+    void list_isPaginatedAndNewestFirst() throws Exception {
+        var dto = ReviewResponseDTO.builder().id(1L).title("Bom").productName("Phone").userName("John").build();
+        when(reviewService.getReviews(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(dto)));
 
-        mockMvc.perform(get("/api/v1/review/list"))
+        mockMvc.perform(get("/api/v1/review/list").param("page", "0").param("size", "5"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].title").value("Bom"))
-                .andExpect(jsonPath("$[0].product").doesNotExist());
+                .andExpect(jsonPath("$.content", hasSize(1)))
+                .andExpect(jsonPath("$.content[0].title").value("Bom"))
+                .andExpect(jsonPath("$.content[0].productName").value("Phone"))
+                .andExpect(jsonPath("$.content[0].userName").value("John"))
+                .andExpect(jsonPath("$.page.totalElements").value(1));
+
+        ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+        verify(reviewService).getReviews(captor.capture());
+        assertEquals(5, captor.getValue().getPageSize());
+        assertEquals(Sort.Direction.DESC, captor.getValue().getSort().getOrderFor("createdAt").getDirection());
     }
 
     @Test
     void listByProduct_defaultsToNewestFirst() throws Exception {
-        when(reviewService.getReviewsByProduct(eq(2L), any(Pageable.class))).thenReturn(new PageImpl<>(List.of(review())));
+        when(reviewService.getReviewsByProduct(eq(2L), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(ReviewResponseDTO.builder().id(1L).build())));
 
         mockMvc.perform(get("/api/v1/review/product/{productId}", 2L))
                 .andExpect(status().isOk())

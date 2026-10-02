@@ -1,6 +1,7 @@
 package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.NotificationDto;
+import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
@@ -22,7 +23,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
-import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -125,17 +125,15 @@ public class ReviewServiceImpl implements ReviewService {
                 .orElseThrow(() -> new NotFoundException("Review not found"));
     }
 
-    @Cacheable(value = "review")
     @Override
-    public List<Review> getReviews() {
-        return reviewRepository.findAll();
-
+    public Page<ReviewResponseDTO> getReviews(Pageable pageable) {
+        return reviewRepository.findAllWithDetails(pageable);
     }
 
     @Override
-    public Page<Review> getReviewsByProduct(Long productId, Pageable pageable) {
+    public Page<ReviewResponseDTO> getReviewsByProduct(Long productId, Pageable pageable) {
         getProduct(productId);
-        return reviewRepository.findByProductId(productId, pageable);
+        return reviewRepository.findByProductIdWithDetails(productId, pageable);
     }
 
     @Override

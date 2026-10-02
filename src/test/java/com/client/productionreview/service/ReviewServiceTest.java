@@ -2,6 +2,7 @@ package com.client.productionreview.service;
 
 
 import com.client.productionreview.dtos.NotificationDto;
+import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
@@ -242,22 +243,24 @@ public class ReviewServiceTest {
 
     @Test
     public void testGetReviews() {
-        when(reviewRepository.findAll()).thenReturn(List.of(review));
+        var pageable = PageRequest.of(0, 10);
+        var dto = ReviewResponseDTO.builder().id(1L).productName("product").userName("owner").build();
+        when(reviewRepository.findAllWithDetails(pageable)).thenReturn(new PageImpl<>(List.of(dto)));
 
-        List<Review> reviews = reviewService.getReviews();
+        Page<ReviewResponseDTO> reviews = reviewService.getReviews(pageable);
 
-        assertNotNull(reviews);
-        assertFalse(reviews.isEmpty());
-        assertEquals(1, reviews.size());
+        assertEquals(1, reviews.getTotalElements());
+        assertEquals("owner", reviews.getContent().get(0).getUserName());
     }
 
     @Test
     public void testGetReviewsByProduct() {
         var pageable = PageRequest.of(0, 10);
         when(productRepository.findById(productId)).thenReturn(Optional.of(product));
-        when(reviewRepository.findByProductId(productId, pageable)).thenReturn(new PageImpl<>(List.of(review)));
+        when(reviewRepository.findByProductIdWithDetails(productId, pageable))
+                .thenReturn(new PageImpl<>(List.of(ReviewResponseDTO.builder().id(1L).build())));
 
-        Page<Review> page = reviewService.getReviewsByProduct(productId, pageable);
+        Page<ReviewResponseDTO> page = reviewService.getReviewsByProduct(productId, pageable);
 
         assertEquals(1, page.getTotalElements());
     }

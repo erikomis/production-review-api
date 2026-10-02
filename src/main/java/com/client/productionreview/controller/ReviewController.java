@@ -16,8 +16,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 
-import java.util.List;
-
 @RestController
 @RequestMapping(value = "/api/v1/review")
 public class ReviewController {
@@ -62,8 +60,11 @@ public class ReviewController {
 
 
     @GetMapping("/list")
-    public List<ReviewResponseDTO> getReviews() {
-        return reviewService.getReviews().stream().map(reviewMapper::toDTO).toList();
+    public Page<ReviewResponseDTO> getReviews(@RequestParam(value = "page", required = false) Integer page,
+                                              @RequestParam(value = "size", required = false) Integer size,
+                                              @RequestParam(value = "sort", required = false) Sort.Direction sort) {
+        var pageable = PaginationUtils.createPageable(page, size, "createdAt", sort != null ? sort.name() : Sort.Direction.DESC.name());
+        return reviewService.getReviews(pageable);
     }
 
     @GetMapping("/product/{productId}")
@@ -72,7 +73,7 @@ public class ReviewController {
                                                        @RequestParam(value = "size", required = false) Integer size,
                                                        @RequestParam(value = "sort", required = false) Sort.Direction sort) {
         var pageable = PaginationUtils.createPageable(page, size, "createdAt", sort != null ? sort.name() : Sort.Direction.DESC.name());
-        return reviewService.getReviewsByProduct(productId, pageable).map(reviewMapper::toDTO);
+        return reviewService.getReviewsByProduct(productId, pageable);
     }
 
     @GetMapping("/product/{productId}/summary")

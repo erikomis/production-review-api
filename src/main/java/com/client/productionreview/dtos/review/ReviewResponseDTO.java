@@ -26,4 +26,9 @@ public class ReviewResponseDTO {
     private Long userId;
 
     private LocalDateTime createdAt;
+
+    /** Preenchido nas listagens; nulo nas respostas de criação/edição. */
+    private String productName;
+
+    private String userName;
 }

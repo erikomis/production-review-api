@@ -90,14 +90,34 @@ class ProductAndReviewRepositoryTest {
     }
 
     @Test
-    void findByProductId_paginates() {
+    void findByProductIdWithDetails_paginatesAndFillsNames() {
         review(phone, 5);
         review(phone, 3);
         review(laptop, 2);
 
-        var page = reviewRepository.findByProductId(phone.getId(), PageRequest.of(0, 1));
+        var page = reviewRepository.findByProductIdWithDetails(phone.getId(), PageRequest.of(0, 1));
 
         assertEquals(2, page.getTotalElements());
         assertEquals(1, page.getContent().size());
+        assertEquals("Smartphone X", page.getContent().get(0).getProductName());
+        assertEquals("u", page.getContent().get(0).getUserName());
+    }
+
+    @Test
+    void findAllWithDetails_sortsByCreatedAt() {
+        review(phone, 5);
+        review(laptop, 2);
+
+        var page = reviewRepository.findAllWithDetails(
+                PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("createdAt").descending()));
+
+        assertEquals(2, page.getTotalElements());
+        assertEquals("Notebook Pro", page.getContent().get(0).getProductName());
+    }
+
+    @Test
+    void findBySlug() {
+        assertEquals("Smartphone X", productRepository.findBySlug("smartphone-x").orElseThrow().getName());
+        assertTrue(productRepository.findBySlug("nope").isEmpty());
     }
 }
