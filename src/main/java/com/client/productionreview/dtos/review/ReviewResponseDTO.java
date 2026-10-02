@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -29,7 +29,7 @@ public class ReviewResponseDTO implements Serializable {
 
     private Long userId;
 
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /** Preenchido nas listagens; nulo nas respostas de criação/edição. */
     private String productName;
@@ -47,15 +47,15 @@ public class ReviewResponseDTO implements Serializable {
 
     private String moderationReason;
 
-    private LocalDateTime moderatedAt;
+    private Instant moderatedAt;
 
     /** Nome do admin que moderou por último (só faz sentido na moderação). */
     private String moderatedByName;
 
     /** Usado pela projeção JPQL das listagens. */
     public ReviewResponseDTO(Long id, String title, String description, Long note, Long productId, Long userId,
-                             LocalDateTime createdAt, String productName, String productSlug, String userName,
-                             ReviewStatus status, String moderationReason, LocalDateTime moderatedAt,
+                             Instant createdAt, String productName, String productSlug, String userName,
+                             ReviewStatus status, String moderationReason, Instant moderatedAt,
                              String moderatedByName, Long helpfulCount) {
         this.id = id;
         this.title = title;

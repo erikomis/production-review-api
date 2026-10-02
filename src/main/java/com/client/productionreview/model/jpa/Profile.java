@@ -12,7 +12,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -32,10 +32,10 @@ public class Profile implements Serializable {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
     @UpdateTimestamp
-    private  LocalDateTime updatedAt;
+    private  Instant updatedAt;
 
 }

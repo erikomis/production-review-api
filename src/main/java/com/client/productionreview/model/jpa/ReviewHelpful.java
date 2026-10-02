@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Marcação "útil" de um usuário em uma review (no máximo uma por par review/usuário). */
 @Data
@@ -30,7 +30,7 @@ public class ReviewHelpful implements Serializable {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public ReviewHelpful(Long reviewId, Long userId) {
         this.reviewId = reviewId;

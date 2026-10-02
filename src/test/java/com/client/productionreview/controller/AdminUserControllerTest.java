@@ -21,7 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,7 +56,7 @@ class AdminUserControllerTest {
 
     private AdminUserDTO maria() {
         return AdminUserDTO.builder().id(2L).name("Maria").username("maria").email("maria@mail.com").active(true)
-                .roles(List.of("USER")).createdAt(LocalDateTime.of(2026, 10, 1, 10, 0)).reviewsCount(3).build();
+                .roles(List.of("USER")).createdAt(Instant.parse("2026-10-01T10:00:00.123456Z")).reviewsCount(3).build();
     }
 
     @Test
@@ -71,7 +71,7 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.content[0].email").value("maria@mail.com"))
                 .andExpect(jsonPath("$.content[0].active").value(true))
                 .andExpect(jsonPath("$.content[0].roles[0]").value("USER"))
-                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-01T10:00:00"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-01T10:00:00Z"))
                 .andExpect(jsonPath("$.content[0].reviewsCount").value(3))
                 .andExpect(jsonPath("$.content[0].password").doesNotExist());
 

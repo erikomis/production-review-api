@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Produto da listagem pública, com nota média e total de reviews visíveis. */
 @Data
@@ -29,13 +29,13 @@ public class ProductSummaryDTO implements Serializable {
     private String imageUrl;
     private Double averageNote;
     private long totalReviews;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     /** Usado pela projeção JPQL. */
     public ProductSummaryDTO(Long id, String name, String description, String slug,
                              Long subCategorieId, String subCategorieName, String subCategorieSlug,
                              Long categoryId, String categoryName, String categorySlug,
-                             LocalDateTime createdAt, Double averageNote, Long totalReviews) {
+                             Instant createdAt, Double averageNote, Long totalReviews) {
         this.id = id;
         this.name = name;
         this.description = description;

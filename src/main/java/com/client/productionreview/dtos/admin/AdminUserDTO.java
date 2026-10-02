@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -20,6 +20,6 @@ public class AdminUserDTO {
     private String email;
     private Boolean active;
     private List<String> roles;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
     private long reviewsCount;
 }

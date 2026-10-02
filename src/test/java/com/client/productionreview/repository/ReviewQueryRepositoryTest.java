@@ -26,7 +26,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -77,7 +78,7 @@ class ReviewQueryRepositoryTest {
         hidden = review(phone, reader, 1, "Spam total", ReviewStatus.HIDDEN);
         hidden.setModeratedBy(admin.getId());
         hidden.setModerationReason("spam");
-        hidden.setModeratedAt(LocalDateTime.now());
+        hidden.setModeratedAt(Instant.now());
         reviewRepository.save(hidden);
         other = review(laptop, author, 4, "Bom notebook", ReviewStatus.VISIBLE);
 
@@ -182,7 +183,7 @@ class ReviewQueryRepositoryTest {
         assertEquals(3, reviewRepository.countByStatus(ReviewStatus.VISIBLE));
         assertEquals(1, reviewRepository.countByStatus(ReviewStatus.HIDDEN));
         assertEquals(3.667, reviewRepository.averageNote(ReviewStatus.VISIBLE), 0.001);
-        assertEquals(3, reviewRepository.findCreatedSince(ReviewStatus.VISIBLE, LocalDateTime.now().minusDays(1)).size());
+        assertEquals(3, reviewRepository.findCreatedSince(ReviewStatus.VISIBLE, Instant.now().minus(1, ChronoUnit.DAYS)).size());
 
         List<TopProductDTO> top = reviewRepository.topProducts(ReviewStatus.VISIBLE, PageRequest.of(0, 5));
         assertEquals("Smartphone X", top.get(0).getName());

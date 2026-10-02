@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,5 +34,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
                       Pageable pageable);
 
     @Query("SELECT u.createdAt FROM User u WHERE u.createdAt >= :from")
-    List<LocalDateTime> findCreatedSince(@Param("from") LocalDateTime from);
+    List<Instant> findCreatedSince(@Param("from") Instant from);
 }

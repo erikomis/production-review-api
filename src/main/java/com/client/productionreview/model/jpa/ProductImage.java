@@ -8,7 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "product_image")
@@ -38,11 +38,11 @@ public class ProductImage implements Serializable {
 
     @CreationTimestamp
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
     @UpdateTimestamp
-    private  LocalDateTime updatedAt;
+    private  Instant updatedAt;
 
 
 }

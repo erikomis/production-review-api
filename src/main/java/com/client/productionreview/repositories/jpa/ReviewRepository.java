@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -37,7 +37,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
 
     @Query("SELECT r.createdAt AS createdAt, r.note AS note FROM Review r "
             + "WHERE r.status = :status AND r.createdAt >= :from")
-    List<CreatedNote> findCreatedSince(@Param("status") ReviewStatus status, @Param("from") LocalDateTime from);
+    List<CreatedNote> findCreatedSince(@Param("status") ReviewStatus status, @Param("from") Instant from);
 
     @Query("SELECT new com.client.productionreview.dtos.admin.TopProductDTO(p.id, p.name, p.slug, COUNT(r), AVG(r.note)) "
             + "FROM Review r JOIN Product p ON p.id = r.productId WHERE r.status = :status "
@@ -66,7 +66,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
     }
 
     interface CreatedNote {
-        LocalDateTime getCreatedAt();
+        Instant getCreatedAt();
 
         Long getNote();
     }
