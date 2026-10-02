@@ -1,6 +1,3 @@
-version: "3.8"
-
-
 networks:
   web-network:
     name: web-network
@@ -15,7 +12,9 @@ volumes:
 services:
   web:
     container_name: web
-    image: martinsozzs/production-review:latest
+    # imagem privada no GitHub Container Registry; o deploy define IMAGE_TAG=sha-<commit>
+    image: ghcr.io/erikomis/production-review-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     networks:
       - web-network
       - gv-network
