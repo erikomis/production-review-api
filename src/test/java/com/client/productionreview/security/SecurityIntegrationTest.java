@@ -151,7 +151,12 @@ class SecurityIntegrationTest {
     @Test
     void protectedRoute_withoutToken_returns401() throws Exception {
         mockMvc.perform(post("/api/v1/category/").contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                // mesmo formato de erro do restante da API
+                .andExpect(jsonPath("$.statusCode").value(401))
+                .andExpect(jsonPath("$.httpStatus").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Faça login para continuar"))
+                .andExpect(jsonPath("$.path").doesNotExist());
     }
 
     @Test
@@ -187,6 +192,10 @@ class SecurityIntegrationTest {
         mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(commonUser))
                         .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/v1/admin/users").cookie(accessCookie(commonUser)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.statusCode").value(403))
+                .andExpect(jsonPath("$.httpStatus").value("FORBIDDEN"));
     }
 
     @Test

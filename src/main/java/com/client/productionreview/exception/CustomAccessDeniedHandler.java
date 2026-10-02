@@ -1,16 +1,16 @@
 package com.client.productionreview.exception;
 
+import com.client.productionreview.dtos.error.ErrorResponseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
@@ -22,18 +22,19 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        log.error("Access denied error: {}", accessDeniedException.getMessage());
+        log.debug("Acesso negado em {}: {}", request.getServletPath(), accessDeniedException.getMessage());
 
         response.setContentType(APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        final Map<String, Object> body = new HashMap<>();
-        body.put("status", HttpServletResponse.SC_FORBIDDEN);
-        body.put("error", "Forbidden");
-        body.put("message", accessDeniedException.getMessage());
-        body.put("path", request.getServletPath());
+        // mesmo formato de erro do ResourceHandler: {message, httpStatus, statusCode}
+        final ErrorResponseDto body = ErrorResponseDto.builder()
+                .message("Você não tem permissão para acessar este recurso")
+                .httpStatus(HttpStatus.FORBIDDEN)
+                .statusCode(HttpStatus.FORBIDDEN.value())
+                .build();
 
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(response.getOutputStream(), body);
+        new ObjectMapper().writeValue(response.getOutputStream(), body);
     }
 }
