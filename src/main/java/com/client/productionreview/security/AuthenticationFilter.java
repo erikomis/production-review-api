@@ -1,7 +1,5 @@
 package com.client.productionreview.security;
 
-import com.client.productionreview.exception.NotFoundException;
-import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.provider.JwtProvider;
 import com.client.productionreview.repositories.jpa.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -13,8 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Objects;
-import java.util.Optional;
 
 public class AuthenticationFilter  extends OncePerRequestFilter {
 
@@ -32,41 +28,28 @@ public class AuthenticationFilter  extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         var token = jwtProvider.getTokenFromCookie(request);
-        if (token != null && jwtProvider.validateToken(token) != null) {
-
+        if (token != null) {
             authByToken(token);
         }
         filterChain.doFilter(request, response);
 
     }
 
-
+    /**
+     * Token inválido, usuário inexistente ou inativo não lança exceção: a requisição segue
+     * sem autenticação e o Spring Security responde 401 se a rota exigir login.
+     */
     private void authByToken(String token) {
-        var tokenOpt = jwtProvider.validateToken(token);
-        if (tokenOpt == null) {
-             throw new NotFoundException("Token inválido");
-        }
-
         Long userId = jwtProvider.getUserId(token);
-        var userOpt = userRepository.findById(userId);
-
-        if (userOpt.isEmpty()) {
-            throw new NotFoundException("Usuário não encontrado");
+        if (userId == null) {
+            return;
         }
 
-        User userCredentials = userOpt.get();
-
-
-        UsernamePasswordAuthenticationToken userAuth
-                = new UsernamePasswordAuthenticationToken(userCredentials, null, userCredentials.getAuthorities());
-
-        SecurityContextHolder.getContext().setAuthentication(userAuth);
+        // usuário desativado por um admin perde o acesso mesmo com token ainda válido
+        userRepository.findById(userId).filter(user -> Boolean.TRUE.equals(user.getActive())).ifPresent(user -> {
+            var userAuth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+            SecurityContextHolder.getContext().setAuthentication(userAuth);
+        });
     }
-
-
-
-
-
-
 
 }

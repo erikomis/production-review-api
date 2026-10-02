@@ -1,5 +1,8 @@
 package com.client.productionreview.service;
 
+import com.client.productionreview.dtos.product.ProductDetailDTO;
+import com.client.productionreview.dtos.product.ProductFilter;
+import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.model.jpa.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,5 +19,12 @@ public interface ProductService {
 
         public  Product getProduct(Long id);
 
-        public Page<Product> getAllProduct(Pageable pageable, String search);
+        public Product getProductBySlug(String slug);
+
+        public ProductDetailDTO getProductDetail(Long id);
+
+        public ProductDetailDTO getProductDetailBySlug(String slug);
+
+        /** Página de produtos com nota média e total de reviews visíveis. */
+        public Page<ProductSummaryDTO> listProducts(ProductFilter filter, Pageable pageable);
 }

@@ -1,6 +1,13 @@
 package com.client.productionreview.service;
 
+import com.client.productionreview.dtos.product.ProductDetailDTO;
+import com.client.productionreview.dtos.product.ProductFilter;
+import com.client.productionreview.dtos.product.ProductSummaryDTO;
+import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
+import com.client.productionreview.model.jpa.ProductImage;
+import com.client.productionreview.repositories.jpa.ProductImageRepository;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.ProductRepository;
@@ -16,17 +23,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 
 
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 
@@ -39,6 +49,12 @@ public class ProductServiceTest {
 
     @Mock
     private SubCategoryRepository subCategorieRepository;
+
+    @Mock
+    private ProductImageRepository productImageRepository;
+
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     @Mock
     private Path fileStorageLocation;
@@ -99,6 +115,26 @@ public class ProductServiceTest {
 
 
     @Test
+    void testUpdateProduct_updatesExistingRecord() {
+        Product incoming = new Product();
+        incoming.setName("New name");
+        incoming.setSlug("new-slug");
+        incoming.setDescription("new description");
+        incoming.setSubCategorieId(2L);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(subCategorieRepository.findById(2L)).thenReturn(Optional.of(new SubCategory()));
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Product updated = productService.updateProduct(incoming, 1L);
+
+        // antes da correção o produto recebido (sem id) era salvo, criando um novo registro
+        assertEquals(1L, updated.getId());
+        assertEquals("New name", updated.getName());
+        assertEquals(2L, updated.getSubCategorieId());
+    }
+
+    @Test
     void testUpdateProductNotFound() {
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -143,6 +179,20 @@ public class ProductServiceTest {
 
 
     @Test
+    void testGetProductBySlug() {
+        when(productRepository.findBySlug("smartphone")).thenReturn(Optional.of(product));
+
+        assertEquals(product, productService.getProductBySlug("smartphone"));
+    }
+
+    @Test
+    void testGetProductBySlugNotFound() {
+        when(productRepository.findBySlug("nope")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> productService.getProductBySlug("nope"));
+    }
+
+    @Test
     void testGetProductNotFound() {
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
 
@@ -154,29 +204,78 @@ public class ProductServiceTest {
     }
 
 
-    @Test
-    void testGetAllProductWithoutSearch() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> page = new PageImpl<>(Collections.singletonList(product));
-
-        when(productRepository.findAll(any(Pageable.class))).thenReturn(page);
-
-        Page<Product> result = productService.getAllProduct(pageable, null);
-
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
+    private ProductSummaryDTO summary() {
+        return new ProductSummaryDTO(1L, "Test Product", "d", "test-product", 1L, "Sub", "sub", 2L, "Cat", "cat", null, 4.25, 4L);
     }
 
     @Test
-    void testGetAllProductWithSearch() {
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Product> page = new PageImpl<>(Collections.singletonList(product));
+    void testListProducts_delegatesFilterAndPageable() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "averageNote"));
+        ProductFilter filter = new ProductFilter("Test", 2L, null, true);
+        when(productRepository.findSummaries(filter, pageable)).thenReturn(new PageImpl<>(List.of(summary())));
 
-        when(productRepository.findAllByProduct(anyString(), any(Pageable.class))).thenReturn(page);
+        Page<ProductSummaryDTO> result = productService.listProducts(filter, pageable);
 
-        Page<Product> result = productService.getAllProduct(pageable, "Test");
-
-        assertNotNull(result);
         assertEquals(1, result.getTotalElements());
+        assertEquals(4.3, result.getContent().get(0).getAverageNote());
+        assertEquals(4L, result.getContent().get(0).getTotalReviews());
+    }
+
+    @Test
+    void testListProducts_invalidSortProperty_throwsBadRequest() {
+        Pageable pageable = PageRequest.of(0, 10, Sort.by("price"));
+
+        assertThrows(BadRequestException.class,
+                () -> productService.listProducts(new ProductFilter(null, null, null, false), pageable));
+        verifyNoInteractions(productRepository);
+    }
+
+    @Test
+    void testGetProductDetail_includesAllImagesInOrder() {
+        when(productRepository.findSummaries(eq(ProductFilter.byId(1L)), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(summary())));
+        ProductImage first = new ProductImage();
+        first.setId(5L);
+        first.setUrlImage("https://img/1.jpg");
+        ProductImage second = new ProductImage();
+        second.setId(6L);
+        second.setUrlImage("https://img/2.jpg");
+        when(productImageRepository.findByProductIdOrderByIdAsc(1L)).thenReturn(List.of(first, second));
+
+        ProductDetailDTO detail = productService.getProductDetail(1L);
+
+        assertEquals("Test Product", detail.getName());
+        assertEquals("https://img/1.jpg", detail.getImageUrl());
+        assertEquals(2, detail.getImages().size());
+        assertEquals(6L, detail.getImages().get(1).getId());
+        assertEquals("Cat", detail.getCategoryName());
+    }
+
+    @Test
+    void testGetProductDetailBySlug_notFound() {
+        when(productRepository.findSummaries(eq(ProductFilter.bySlug("nope")), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertThrows(NotFoundException.class, () -> productService.getProductDetailBySlug("nope"));
+    }
+
+    @Test
+    void testAddProduct_publishesEvent() {
+        when(subCategorieRepository.findById(anyLong())).thenReturn(Optional.of(new SubCategory()));
+        when(productRepository.save(product)).thenReturn(product);
+
+        productService.addProduct(product);
+
+        verify(eventPublisher).publish(eq(EventType.PRODUCT_CREATED), eq(1L), anyString());
+    }
+
+    @Test
+    void testDeleteProduct_publishesEvent() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+
+        productService.deleteProduct(1L);
+
+        verify(productRepository).delete(product);
+        verify(eventPublisher).publish(eq(EventType.PRODUCT_DELETED), eq(1L), anyString());
     }
 }

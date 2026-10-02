@@ -24,6 +24,9 @@ public class ProductMapper {
         productResponseDTO.setSlug(product.getSlug());
         productResponseDTO.setDescription(product.getDescription());
         productResponseDTO.setSubCategorieId(product.getSubCategorieId());
+        if (product.getProductImages() != null && !product.getProductImages().isEmpty()) {
+            productResponseDTO.setImageUrl(product.getProductImages().get(0).getUrlImage());
+        }
         return productResponseDTO;
     }
 }

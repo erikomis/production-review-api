@@ -12,18 +12,17 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface ProductRepository extends PagingAndSortingRepository<Product,Long> , JpaRepository<Product, Long> {
+public interface ProductRepository extends PagingAndSortingRepository<Product,Long> , JpaRepository<Product, Long>,
+        ProductSummaryRepository {
 
 
     @Query("SELECT p FROM Product p WHERE p.slug = :slug")
     Optional<Product> findBySlug(final String slug);
 
 
-    @Query(
-            value = "SELECT * FROM Product p WHERE p.name LIKE :product",
-            countQuery = "SELECT count(*) FROM product",
-            nativeQuery = true
-    )
+    boolean existsBySlug(String slug);
+
+    @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :product, '%'))")
     Page<Product> findAllByProduct(@Param("product") final String product, final Pageable pageable);
 
 }

@@ -2,6 +2,7 @@ package com.client.productionreview.controller;
 
 
 import com.client.productionreview.controller.mapper.CategoryMapper;
+import com.client.productionreview.dtos.category.CategoryDetailDTO;
 import com.client.productionreview.dtos.category.CategoryRequestDTO;
 import com.client.productionreview.dtos.category.CategoryResponseDTO;
 import com.client.productionreview.model.jpa.Category;
@@ -40,7 +41,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
-    public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @RequestBody CategoryRequestDTO categorioDto) {
+    public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @Valid @RequestBody CategoryRequestDTO categorioDto) {
         Category model = categorieMapper.toModel(categorioDto);
         var categorieModel = categorieService.updateCategory(model, id);
         return  categorieMapper.toDTO(categorieModel);
@@ -59,6 +60,12 @@ public class CategoryController {
        Category categorieModel = categorieService.getCategory(id);
         return categorieMapper.toDTO(categorieModel);
 
+    }
+
+    @GetMapping("/slug/{slug}")
+    @ResponseStatus(HttpStatus.OK)
+    public CategoryDetailDTO getCategoryBySlug(@PathVariable("slug") String slug) {
+        return categorieMapper.toDetailDTO(categorieService.getCategoryBySlug(slug));
     }
 
     @GetMapping("/list")

@@ -1,43 +1,90 @@
-version: "3.8"
-
-
+# Produção: API + observabilidade (Prometheus e Grafana).
+# Variáveis lidas do .env desta pasta (veja o README, seção Observabilidade).
 networks:
   web-network:
     name: web-network
   gv-network:
     driver: bridge
 
-
 volumes:
-    prometheus_data:
-    grafana_data:
+  prometheus_data:
+  grafana_data:
 
 services:
   web:
     container_name: web
-    image: martinsozzs/production-review:latest
+    # imagem privada no GitHub Container Registry; o deploy define IMAGE_TAG=sha-<commit>
+    image: ghcr.io/erikomis/production-review-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
     networks:
       - web-network
       - gv-network
     ports:
       - "8084:8084"
+    # 8085 = actuator/métricas: só na rede interna, nunca publicada
+    expose:
+      - "8085"
     env_file:
       - .env
+
   prometheus:
     container_name: prometheus
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.15.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION:-15d}
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     networks:
       - gv-network
+    # só na própria máquina: acesse por túnel SSH (ssh -L 9090:localhost:9090 vps)
     ports:
-      - 9090:9090
+      - "127.0.0.1:9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   grafana:
     container_name: grafana
-    image: grafana/grafana:latest
-    ports:
-      - 3000:3000
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?defina GRAFANA_ADMIN_PASSWORD no .env}
+      GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/reviewstore-api.json
+      # alertas por e-mail (por padrão, o mesmo SMTP/conta que a API usa)
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-smtp.gmail.com:587}
+      GF_SMTP_USER: ${MAIL_USERNAME:-}
+      GF_SMTP_PASSWORD: ${MAIL_PASSWORD:-}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM:-${MAIL_USERNAME:-grafana@localhost}}
+      GF_SMTP_FROM_NAME: ReviewStore · Alertas
+      GF_SMTP_STARTTLS_POLICY: ${GRAFANA_SMTP_STARTTLS:-MandatoryStartTLS}
+      ALERT_EMAIL: ${ALERT_EMAIL:-${MAIL_USERNAME:-}}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - gv-network
       - web-network
+    # só na própria máquina: use um proxy com HTTPS na web-network ou túnel SSH (ssh -L 3000:localhost:3000 vps)
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

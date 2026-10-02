@@ -5,22 +5,30 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.WebUtils;
 
-import java.time.Duration;
 import java.time.Instant;
 
 
+@Slf4j
 @Service
 public class JwtProvider {
 
+    private static final String ISSUER = "Production Review API";
 
     private static final String COOKIE = "token";
 
     private static final String REFRESH_COOKIE = "refresh_token";
+
+    private static final String TYPE_CLAIM = "type";
+
+    private static final String ACCESS_TYPE = "access";
+
+    private static final String REFRESH_TYPE = "refresh";
 
     @Value("${security.token.secret}")
     private String secretKey;
@@ -41,105 +49,88 @@ public class JwtProvider {
         return cookie != null ? cookie.getValue() : null;
     }
 
-    public DecodedJWT validateToken(String token) {
-
-        Algorithm algorithm = Algorithm.HMAC256(secretKey);
+    /**
+     * Valida assinatura, emissor, expiração e o tipo do token (access/refresh).
+     * Retorna null quando o token é inválido.
+     */
+    private DecodedJWT validateToken(String token, String type) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
         try {
-            var tokenDecoded = JWT.require(algorithm)
+            return JWT.require(algorithm())
+                    .withIssuer(ISSUER)
+                    .withClaim(TYPE_CLAIM, type)
                     .build()
                     .verify(token);
-
-            return tokenDecoded;
         } catch (JWTVerificationException ex) {
-            ex.printStackTrace();
-           return null;
+            log.debug("Token inválido: {}", ex.getMessage());
+            return null;
         }
     }
 
-
     public ResponseCookie generateToken(Long userId) {
-
-        Instant now = Instant.now();
-        Instant expiration = now.plusSeconds(expirationRefresh);
-        long secondsUntilExpiration = Duration.between(now, expiration).getSeconds();
-        Algorithm algorithm = Algorithm.HMAC256(secretKey);
-        var jwt =JWT.create()
-                .withIssuer("Production Review API")
-                .withExpiresAt(
-                        expiration
-                )
-                .withSubject(userId.toString())
-                .sign(algorithm);
-
-        var builder = ResponseCookie.from(COOKIE, jwt)
-                .path("/")
-                .maxAge(secondsUntilExpiration)
-                .secure(true)
-                .httpOnly(true);
-
-        return builder.build();
+        return buildCookie(COOKIE, createToken(userId, ACCESS_TYPE, expiration), expiration);
     }
 
-public ResponseCookie generateRefreshToken(Long userId) {
-    Instant now = Instant.now();
-    Instant expiration = now.plusSeconds(expirationRefresh);
-    long secondsUntilExpiration = Duration.between(now, expiration).getSeconds();
-
-
-    Algorithm algorithm = Algorithm.HMAC256(secretKey);
-        var jwt = JWT.create()
-                .withIssuer("Production Review API")
-                .withSubject(userId.toString())
-                .withExpiresAt(
-                        expiration
-                )
-                .sign(algorithm);
-
-        var builder = ResponseCookie.from(REFRESH_COOKIE, jwt)
-            .path("/")
-            .maxAge( secondsUntilExpiration)
-            .secure(true)
-            .httpOnly(true);
-
-        return builder.build();
+    public ResponseCookie generateRefreshToken(Long userId) {
+        return buildCookie(REFRESH_COOKIE, createToken(userId, REFRESH_TYPE, expirationRefresh), expirationRefresh);
     }
 
     public Long getUserId(String token) {
-        DecodedJWT decodedJWT = validateToken(token);
-        return Long.parseLong(decodedJWT.getSubject());
+        return subjectAsLong(validateToken(token, ACCESS_TYPE));
     }
 
     public Long getUserIdFromRefreshToken(String token) {
-        DecodedJWT decodedJWT = validateToken(token);
-        return Long.parseLong(decodedJWT.getSubject());
+        return subjectAsLong(validateToken(token, REFRESH_TYPE));
     }
 
     public boolean isValid(String token) {
-        return validateToken(token) != null;
+        return validateToken(token, ACCESS_TYPE) != null;
     }
 
     public boolean isValidRefreshToken(String token) {
-        return validateToken(token) != null;
+        return validateToken(token, REFRESH_TYPE) != null;
     }
-
 
     public ResponseCookie cleanToken() {
-        var builder = ResponseCookie.from(COOKIE, "")
-                .path("/")
-                .maxAge(0)
-                .secure(true)
-                .httpOnly(true);
-        return builder.build();
+        return buildCookie(COOKIE, "", 0L);
     }
 
-
-
     public ResponseCookie cleanRefreshToken() {
-        var builder = ResponseCookie.from(REFRESH_COOKIE, "")
+        return buildCookie(REFRESH_COOKIE, "", 0L);
+    }
+
+    private String createToken(Long userId, String type, Long seconds) {
+        return JWT.create()
+                .withIssuer(ISSUER)
+                .withSubject(userId.toString())
+                .withClaim(TYPE_CLAIM, type)
+                .withExpiresAt(Instant.now().plusSeconds(seconds))
+                .sign(algorithm());
+    }
+
+    private ResponseCookie buildCookie(String name, String value, Long maxAge) {
+        return ResponseCookie.from(name, value)
                 .path("/")
-                .maxAge(0)
+                .maxAge(maxAge)
                 .secure(true)
-                .httpOnly(true);
-        return builder.build();
+                .httpOnly(true)
+                .build();
+    }
+
+    private Long subjectAsLong(DecodedJWT decodedJWT) {
+        if (decodedJWT == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(decodedJWT.getSubject());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private Algorithm algorithm() {
+        return Algorithm.HMAC256(secretKey);
     }
 }

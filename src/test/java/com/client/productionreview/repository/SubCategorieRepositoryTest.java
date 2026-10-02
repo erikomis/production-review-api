@@ -6,22 +6,15 @@ import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureDataJpa;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
 
+import static org.junit.jupiter.api.Assertions.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-@AutoConfigureDataJpa
-@AutoConfigureTestDatabase
-@WebMvcTest(SubCategoryRepository.class)
-@AutoConfigureMockMvc(addFilters = false)
+@DataJpaTest
 @ActiveProfiles(profiles = "test")
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SubCategorieRepositoryTest {
 
     @Autowired
@@ -30,47 +23,68 @@ public class SubCategorieRepositoryTest {
     @Autowired
     private CategoryRepository categorieRepository;
 
+    @Autowired
+    private TestEntityManager entityManager;
+
+    private Category categorie1;
+    private Category categorie2;
+
     @BeforeEach
     public void setUp() {
-        // Limpar dados antes de cada teste
-        subCategorieRepository.deleteAll();
-        categorieRepository.deleteAll();
+        categorie1 = categorieRepository.save(Category.builder().name("categorie1").description("description1").slug("slug1").build());
+        categorie2 = categorieRepository.save(Category.builder().name("categorie2").description("description2").slug("slug2").build());
 
-        // Criar e salvar Categorias
-        Category categorie1 = new Category();
-        categorie1.setName("categorie1");
-        categorie1.setDescription("description1");
-        categorie1.setSlug("slug1");
-        categorieRepository.save(categorie1);
+        saveSubCategory("sub1", "sub-slug1", categorie1.getId());
+        saveSubCategory("sub2", "sub-slug2", categorie1.getId());
+    }
 
-        Category categorie2 = new Category();
-        categorie2.setName("categorie2");
-        categorie2.setDescription("description2");
-        categorie2.setSlug("slug2");
-        categorieRepository.save(categorie2);
-
-        // Criar e salvar SubCategorias
-        SubCategory subCategorie1 = new SubCategory();
-        subCategorie1.setName("categorie1");
-        subCategorie1.setDescription("description1");
-        subCategorie1.setSlug("slug1");
-        subCategorie1.setCategorieId(categorie1.getId());
-        subCategorieRepository.save(subCategorie1);
-
-        SubCategory subCategorie2 = new SubCategory();
-        subCategorie2.setName("categorie2");
-        subCategorie2.setDescription("description2");
-        subCategorie2.setSlug("slug2");
-        subCategorie2.setCategorieId(categorie2.getId());
-        subCategorieRepository.save(subCategorie2);
+    private SubCategory saveSubCategory(String name, String slug, Long categoryId) {
+        SubCategory subCategory = new SubCategory();
+        subCategory.setName(name);
+        subCategory.setDescription("description");
+        subCategory.setSlug(slug);
+        subCategory.setCategorieId(categoryId);
+        return subCategorieRepository.saveAndFlush(subCategory);
     }
 
     @Test
     public void testFindByName(){
 
-        assertEquals("categorie1", subCategorieRepository.findByName("categorie1").get().getName());
-        assertEquals("categorie2", subCategorieRepository.findByName("categorie2").get().getName());
+        assertEquals("sub1", subCategorieRepository.findByName("sub1").get().getName());
+        assertEquals("sub2", subCategorieRepository.findByName("sub2").get().getName());
 
+    }
+
+    @Test
+    public void categorieIdIsPersisted() {
+        // antes da correção category_id era insertable=false e era gravado como NULL
+        entityManager.clear();
+        SubCategory loaded = subCategorieRepository.findByName("sub1").orElseThrow();
+
+        assertEquals(categorie1.getId(), loaded.getCategorieId());
+        assertNotNull(loaded.getCategory());
+        assertEquals("categorie1", loaded.getCategory().getName());
+    }
+
+    @Test
+    public void deleteById_reallyRemovesSubCategory() {
+        Long id = subCategorieRepository.findByName("sub1").orElseThrow().getId();
+        entityManager.clear();
+
+        // carrega como o service faz antes de excluir
+        subCategorieRepository.findById(id).orElseThrow();
+        subCategorieRepository.deleteById(id);
+        entityManager.flush();
+        entityManager.clear();
+
+        // antes: o cascade de Category.subCategories desfazia a remoção e o DELETE respondia 204 sem apagar
+        assertTrue(subCategorieRepository.findById(id).isEmpty());
+    }
+
+    @Test
+    public void existsByCategorieId_worksWithMultipleSubCategories() {
+        assertTrue(subCategorieRepository.existsByCategorieId(categorie1.getId()));
+        assertFalse(subCategorieRepository.existsByCategorieId(categorie2.getId()));
     }
 
 }

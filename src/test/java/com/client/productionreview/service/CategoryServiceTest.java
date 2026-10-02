@@ -2,6 +2,7 @@ package com.client.productionreview.service;
 
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
@@ -11,10 +12,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 
 import java.util.List;
+import java.util.Optional;
 
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,6 +35,9 @@ class CategoryServiceTest {
 
     @Mock
     private  SubCategoryRepository subCategoryRepository;
+
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
 
     @Test
@@ -79,14 +85,23 @@ class CategoryServiceTest {
         category.setDescription("description");
         category.setSlug("slug");
 
-        when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
-        when(categorieRepository.save(category)).thenReturn(category);
+        Category current = new Category();
+        current.setId(id);
+        current.setName("old");
 
-        categoryService.updateCategory(category, id);
+        when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(current));
+        when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(current));
+        when(categorieRepository.save(current)).thenReturn(current);
+
+        Category result = categoryService.updateCategory(category, id);
+
+        assertEquals(id, result.getId());
+        assertEquals("category", result.getName());
+        assertEquals("slug", result.getSlug());
 
         verify(categorieRepository, times(1)).findById(id);
         verify(categorieRepository, times(1)).findByName(category.getName());
-        verify(categorieRepository, times(1)).save(category);
+        verify(categorieRepository, times(1)).save(current);
 
     }
 
@@ -120,8 +135,12 @@ class CategoryServiceTest {
         category.setDescription("description");
         category.setSlug("slug");
 
+        Category other = new Category();
+        other.setId(2L);
+        other.setName(category.getName());
+
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
-        when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(category));
+        when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(other));
 
         assertThrows(BusinessExcepion.class, () -> {
             categoryService.updateCategory(category, id);
@@ -189,7 +208,7 @@ class CategoryServiceTest {
         subCategory.setName("subCategory");
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
-        when(subCategoryRepository.findByCategorieId(id)).thenReturn(java.util.Optional.of(subCategory));
+        when(subCategoryRepository.existsByCategorieId(id)).thenReturn(true);
 
         assertThrows(BusinessExcepion.class, () -> {
             categoryService.deleteCategory(id);
@@ -252,4 +271,28 @@ class CategoryServiceTest {
 
     }
 
+
+    @Test
+    void givenSlug_whenGetCategoryBySlug_thenReturnCategoryOrNotFound() {
+        Category category = Category.builder().id(1L).name("Bebidas").slug("bebidas").build();
+        Mockito.when(categorieRepository.findBySlug("bebidas")).thenReturn(Optional.of(category));
+        Mockito.when(categorieRepository.findBySlug("nope")).thenReturn(Optional.empty());
+
+        assertEquals(category, categoryService.getCategoryBySlug("bebidas"));
+        assertThrows(NotFoundException.class, () -> categoryService.getCategoryBySlug("nope"));
+    }
+
+    @Test
+    void givenCategory_whenAddCategory_thenPublishesEvent() {
+        Category category = Category.builder().name("Bebidas").slug("bebidas").build();
+        Mockito.when(categorieRepository.findByName("Bebidas")).thenReturn(Optional.empty());
+        Mockito.when(categorieRepository.save(category)).thenAnswer(inv -> {
+            category.setId(5L);
+            return category;
+        });
+
+        categoryService.addCategory(category);
+
+        Mockito.verify(eventPublisher).publish(Mockito.eq(EventType.CATEGORY_CREATED), Mockito.eq(5L), Mockito.anyString());
+    }
 }

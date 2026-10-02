@@ -1,10 +1,12 @@
 package com.client.productionreview.model.jpa;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
@@ -32,7 +34,9 @@ public class Permission implements Serializable {
     @Column(nullable = false, unique = true)
     private String name;
 
-    @ManyToMany(mappedBy = "permissions", fetch = FetchType.EAGER)
+    @JsonIgnore
+    @EqualsAndHashCode.Exclude
+    @ManyToMany(mappedBy = "permissions", fetch = FetchType.LAZY)
     private Collection<Role> roles;
 
 }

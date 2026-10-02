@@ -26,6 +26,9 @@ public class SubCategorieServiceTest {
     @InjectMocks
     private SubCategoryServiceImpl subCategorieService;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
 
     @Mock
     private SubCategoryRepository subCategoryRepository;
@@ -217,8 +220,12 @@ public class SubCategorieServiceTest {
         subCategory.setSlug("slug1");
         subCategory.setCategorieId(1L);
 
+        SubCategory other = new SubCategory();
+        other.setId(2L);
+        other.setName(subCategory.getName());
+
         when(categoryRepository.findById(subCategory.getCategorieId())).thenReturn(Optional.of(category));
-        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.of(subCategory));
+        when(subCategoryRepository.findByName(subCategory.getName())).thenReturn(Optional.of(other));
         when(subCategoryRepository.findById(1L)).thenReturn(Optional.of(subCategory));
 
 

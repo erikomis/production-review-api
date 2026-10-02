@@ -14,5 +14,7 @@ public interface CategoryService {
 
      Category getCategory(Long id);
 
+     Category getCategoryBySlug(String slug);
+
      List<Category> getAllCategories();
 }

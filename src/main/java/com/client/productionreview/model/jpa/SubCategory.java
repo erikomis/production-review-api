@@ -38,10 +38,10 @@ public class SubCategory implements  Serializable {
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JsonBackReference
-    @JoinColumn(name = "category_id", referencedColumnName = "id")
+    @JoinColumn(name = "category_id", referencedColumnName = "id", insertable = false, updatable = false)
     private Category category;
 
-    @Column(name = "category_id", insertable = false, updatable = false)
+    @Column(name = "category_id")
     private Long categorieId;
 
     @CreationTimestamp

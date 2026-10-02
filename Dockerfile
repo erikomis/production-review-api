@@ -1,25 +1,20 @@
-FROM maven:3.8.3-eclipse-temurin-17 AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
+# baixa as dependências em uma camada separada para aproveitar o cache do Docker
 COPY pom.xml .
+RUN mvn -B dependency:go-offline
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn -B clean package -DskipTests
 
-FROM eclipse-temurin:17
-
-COPY --from=build /app/target/*.jar app.jar
+FROM eclipse-temurin:17-jre
 
 ENV TZ=America/Sao_Paulo
-ENV MAIL_USERNAME=TESTE
-ENV MAIL_PASSWORD=TESTE
-ENV SECRET=TESTE
 
-ENV SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/TESTE
-ENV SPRING_DATASOURCE_USERNAME=TESTE
-ENV SPRING_DATASOURCE_PASSWORD=TESTE
+# as configurações (banco, SECRET, MinIO, e-mail...) vêm do .env via docker-compose
+RUN useradd --system --uid 1001 app
+USER app
 
-ENV URL=TESTE
-
-
+COPY --from=build /app/target/*.jar /app.jar
 
 EXPOSE 8084
 

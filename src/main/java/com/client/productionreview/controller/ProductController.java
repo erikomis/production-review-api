@@ -1,8 +1,12 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ProductMapper;
+import com.client.productionreview.dtos.product.ProductDetailDTO;
+import com.client.productionreview.dtos.product.ProductFilter;
 import com.client.productionreview.dtos.product.ProductRequestDTO;
 import com.client.productionreview.dtos.product.ProductResponseDTO;
+import com.client.productionreview.dtos.product.ProductSortProperty;
+import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.service.ProductService;
 import com.client.productionreview.utils.PaginationUtils;
@@ -16,7 +20,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/api/v1/production")
@@ -50,13 +53,36 @@ public class ProductController {
 
     @GetMapping( "/list")
     @ResponseStatus(HttpStatus.OK)
-    public Page<Product> listProductions(@RequestParam(value = "page", required = false) Integer page, @RequestParam(value = "size", required = false)
-            Integer size, @RequestParam(value = "sort",
-            required = false) Sort.Direction sort, @RequestParam(value = "property", required = false)
-            String property, @RequestParam(value = "search", required = false) String search) {
-        Pageable pageable = PaginationUtils.createPageable(page, size, property,sort != null ? sort.name() : null);
-        return productService.getAllProduct(pageable, search);
+    public Page<ProductSummaryDTO> listProductions(@RequestParam(value = "page", required = false) Integer page,
+                                                   @RequestParam(value = "size", required = false) Integer size,
+                                                   @RequestParam(value = "sort", required = false) Sort.Direction sort,
+                                                   @RequestParam(value = "property", required = false) String property,
+                                                   @RequestParam(value = "search", required = false) String search,
+                                                   @RequestParam(value = "categoryId", required = false) Long categoryId,
+                                                   @RequestParam(value = "subCategorieId", required = false) Long subCategorieId,
+                                                   @RequestParam(value = "onlyRated", required = false, defaultValue = "false") boolean onlyRated) {
+        String sortProperty = blankToNull(property);
+        if (sortProperty != null) {
+            // name | createdAt | averageNote | totalReviews; outro valor -> 400
+            ProductSortProperty.from(sortProperty);
+        }
+        Pageable pageable = PaginationUtils.createPageable(page, size, sortProperty, sort != null ? sort.name() : null);
+        return productService.listProducts(new ProductFilter(blankToNull(search), categoryId, subCategorieId, onlyRated), pageable);
 
+    }
+
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ProductDetailDTO getProduction(@PathVariable("id") Long id) {
+        return productService.getProductDetail(id);
+    }
+
+
+    @GetMapping("/slug/{slug}")
+    @ResponseStatus(HttpStatus.OK)
+    public ProductDetailDTO getProductionBySlug(@PathVariable("slug") String slug) {
+        return productService.getProductDetailBySlug(slug);
     }
 
 
@@ -82,5 +108,10 @@ public class ProductController {
 
     }
 
+
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
 
 }

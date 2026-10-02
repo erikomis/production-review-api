@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Segredos e arquivos locais ###
+.env
+.env.*
+!.env.example
+.DS_Store
