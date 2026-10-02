@@ -99,6 +99,26 @@ public class ProductServiceTest {
 
 
     @Test
+    void testUpdateProduct_updatesExistingRecord() {
+        Product incoming = new Product();
+        incoming.setName("New name");
+        incoming.setSlug("new-slug");
+        incoming.setDescription("new description");
+        incoming.setSubCategorieId(2L);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(subCategorieRepository.findById(2L)).thenReturn(Optional.of(new SubCategory()));
+        when(productRepository.save(any(Product.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Product updated = productService.updateProduct(incoming, 1L);
+
+        // antes da correção o produto recebido (sem id) era salvo, criando um novo registro
+        assertEquals(1L, updated.getId());
+        assertEquals("New name", updated.getName());
+        assertEquals(2L, updated.getSubCategorieId());
+    }
+
+    @Test
     void testUpdateProductNotFound() {
         when(productRepository.findById(anyLong())).thenReturn(Optional.empty());
 
