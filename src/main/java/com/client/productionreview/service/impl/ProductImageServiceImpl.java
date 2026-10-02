@@ -3,9 +3,11 @@ package com.client.productionreview.service.impl;
 import com.client.productionreview.exception.BadRequestException;
 import com.client.productionreview.exception.IoFileException;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.ProductImage;
 import com.client.productionreview.repositories.jpa.ProductImageRepository;
 import com.client.productionreview.repositories.jpa.ProductRepository;
+import com.client.productionreview.service.DomainEventPublisher;
 import com.client.productionreview.service.ProductImageService;
 import com.client.productionreview.service.StorageService;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,9 @@ import java.util.UUID;
 @Service
 public class ProductImageServiceImpl implements ProductImageService {
 
+    /** Imagens externas (ex.: Open Food Facts) não estão no MinIO; só o registro é removido. */
+    public static final String EXTERNAL_PREFIX = "external:";
+
     static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
 
     private final ProductImageRepository productImageRepository;
@@ -34,15 +39,19 @@ public class ProductImageServiceImpl implements ProductImageService {
 
     private final String bucketName;
 
+    private final DomainEventPublisher eventPublisher;
+
     public ProductImageServiceImpl(ProductImageRepository productImageRepository, ProductRepository productRepository,
                                    StorageService storageService,
                                    @Value("${minio.url}") String url,
-                                   @Value("${minio.bucket.name}") String bucketName) {
+                                   @Value("${minio.bucket.name}") String bucketName,
+                                   DomainEventPublisher eventPublisher) {
         this.productImageRepository = productImageRepository;
         this.productRepository = productRepository;
         this.storageService = storageService;
         this.url = url;
         this.bucketName = bucketName;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -74,7 +83,10 @@ public class ProductImageServiceImpl implements ProductImageService {
             productImage.setUrlImage(url + "/" + bucket.bucket() + "/" + bucket.object());
             productImage.setProductId(idProduct);
 
-            return productImageRepository.save(productImage);
+            ProductImage saved = productImageRepository.save(productImage);
+            eventPublisher.publish(EventType.PRODUCT_IMAGE_ADDED, saved.getId(),
+                    "Imagem adicionada ao produto " + idProduct);
+            return saved;
 
         } catch (IOException e) {
             throw new IoFileException("Não foi possível ler o arquivo enviado");
@@ -88,9 +100,14 @@ public class ProductImageServiceImpl implements ProductImageService {
         ProductImage productImage = productImageRepository.findById(idProductImage)
                 .orElseThrow(() -> new NotFoundException("Product Image not found"));
 
-        storageService.deleteFile(bucketName, productImage.getFilename());
+        String filename = productImage.getFilename();
+        if (filename == null || !filename.startsWith(EXTERNAL_PREFIX)) {
+            storageService.deleteFile(bucketName, filename);
+        }
 
         productImageRepository.deleteById(productImage.getId());
+        eventPublisher.publish(EventType.PRODUCT_IMAGE_REMOVED, productImage.getId(),
+                "Imagem removida do produto " + productImage.getProductId());
     }
 
     private static String extensionOf(String filename) {

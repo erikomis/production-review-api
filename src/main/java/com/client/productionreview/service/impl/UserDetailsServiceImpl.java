@@ -6,6 +6,7 @@ import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Role;
 import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.model.redis.UserActivationToken;
@@ -15,6 +16,7 @@ import com.client.productionreview.repositories.jpa.RoleRepository;
 import com.client.productionreview.repositories.jpa.UserRepository;
 import com.client.productionreview.repositories.redis.UserActivationTokenRepository;
 import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository;
+import com.client.productionreview.service.DomainEventPublisher;
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,13 +48,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final long recoveryCodeTimeoutMinutes;
     private final List<String> allowedOrigins;
     private final String frontendUrl;
+    private final DomainEventPublisher eventPublisher;
 
     public UserDetailsServiceImpl(UserRepository userRepository, MailIntegration mailIntegration, PasswordEncoder passwordEncoder, JwtProvider jwtProvider, UserRecoveryCodeRepository userRecoveryCodeRepository,
                                   UserActivationTokenRepository userActivationTokenRepository,
                                   RoleRepository roleRepository,
                                   @Value("${webservices.productionreview.redis.recoverycode.timeout}") long recoveryCodeTimeoutMinutes,
                                   @Value("${app.allowed-origins}") List<String> allowedOrigins,
-                                  @Value("${app.frontend-url}") String frontendUrl) {
+                                  @Value("${app.frontend-url}") String frontendUrl,
+                                  DomainEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
         this.userRepository = userRepository;
         this.mailIntegration = mailIntegration;
         this.passwordEncoder = passwordEncoder;
@@ -83,11 +88,13 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new GlobalException("Usuário não ativado",  HttpStatus.FORBIDDEN);
         }
 
-        return AutoSignInDTOResponse.builder()
+        AutoSignInDTOResponse response = AutoSignInDTOResponse.builder()
                 .token(jwtProvider.generateToken(user.getId()))
                 .refreshToken(jwtProvider.generateRefreshToken(user.getId()))
                 .build();
 
+        eventPublisher.publish(EventType.USER_LOGGED_IN, user.getId(), user.getName() + " entrou no sistema", user);
+        return response;
     }
 
     @Override
@@ -110,9 +117,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         user.setActive(false);
         user.setRoles(new ArrayList<>(List.of(userRole)));
 
-        userRepository.save(user);
+        User saved = userRepository.save(user);
 
         activateAccount(origin, user);
+
+        User actor = saved != null ? saved : user;
+        eventPublisher.publish(EventType.USER_SIGNED_UP, actor.getId(), actor.getName() + " se cadastrou", actor);
     }
 
     private void activateAccount(String origin, User user) {
@@ -227,6 +237,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         userRepository.save(userCredentials);
 
         userActivationTokenRepository.delete(activationToken);
+
+        eventPublisher.publish(EventType.USER_ACTIVATED, userCredentials.getId(),
+                userCredentials.getName() + " ativou a conta", userCredentials);
     }
 
     @Override
@@ -236,7 +249,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         Long idUser = jwtProvider.getUserIdFromRefreshToken(token);
 
-        if (idUser == null || userRepository.findById(idUser).isEmpty()) {
+        // usuário desativado não renova a sessão
+        boolean valid = idUser != null && userRepository.findById(idUser)
+                .map(found -> Boolean.TRUE.equals(found.getActive()))
+                .orElse(false);
+        if (!valid) {
             throw new GlobalException("Token inválido", HttpStatus.UNAUTHORIZED);
         }
 

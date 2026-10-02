@@ -26,6 +26,9 @@ public class SubCategorieServiceTest {
     @InjectMocks
     private SubCategoryServiceImpl subCategorieService;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
 
     @Mock
     private SubCategoryRepository subCategoryRepository;

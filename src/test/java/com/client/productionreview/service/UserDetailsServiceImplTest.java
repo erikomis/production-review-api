@@ -9,6 +9,7 @@ import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Role;
 import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.model.redis.UserActivationToken;
@@ -58,6 +59,8 @@ class UserDetailsServiceImplTest {
     private UserActivationTokenRepository userActivationTokenRepository;
     @Mock
     private RoleRepository roleRepository;
+    @Mock
+    private DomainEventPublisher eventPublisher;
 
     private UserDetailsServiceImpl service;
 
@@ -67,7 +70,7 @@ class UserDetailsServiceImplTest {
     void setUp() {
         service = new UserDetailsServiceImpl(userRepository, mailIntegration, passwordEncoder, jwtProvider,
                 userRecoveryCodeRepository, userActivationTokenRepository, roleRepository,
-                20, List.of(ALLOWED_ORIGIN), FRONTEND_URL);
+                20, List.of(ALLOWED_ORIGIN), FRONTEND_URL, eventPublisher);
 
         user = User.builder()
                 .id(1L)
@@ -98,6 +101,7 @@ class UserDetailsServiceImplTest {
         assertSame(access, response.getToken());
         assertSame(refresh, response.getRefreshToken());
         verifyNoInteractions(mailIntegration);
+        verify(eventPublisher).publish(eq(EventType.USER_LOGGED_IN), eq(1L), anyString(), eq(user));
     }
 
     @Test
@@ -124,6 +128,7 @@ class UserDetailsServiceImplTest {
                 () -> service.loadUserByUsernameAndPass(signIn("wrong"), ALLOWED_ORIGIN));
 
         assertEquals(HttpStatus.UNAUTHORIZED, ex.getHttpStatus());
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -352,6 +357,20 @@ class UserDetailsServiceImplTest {
 
         assertEquals("a", response.getToken().getValue());
         assertEquals("r", response.getRefreshToken().getValue());
+    }
+
+    @Test
+    void refreshToken_inactiveUser_throwsUnauthorized() {
+        user.setActive(false);
+        var request = new MockHttpServletRequest();
+        when(jwtProvider.getRefreshTokenFromCookie(request)).thenReturn("refresh");
+        when(jwtProvider.getUserIdFromRefreshToken("refresh")).thenReturn(1L);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // usuário desativado por um admin não renova a sessão
+        GlobalException ex = assertThrows(GlobalException.class, () -> service.refreshToken(request));
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getHttpStatus());
+        verify(jwtProvider, never()).generateToken(any());
     }
 
     @Test

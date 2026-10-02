@@ -2,10 +2,12 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Category;
 import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
+import com.client.productionreview.service.DomainEventPublisher;
 import com.client.productionreview.service.SubCategoryService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -21,10 +23,13 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
     private final SubCategoryRepository subCategoryRepository;
     private final CategoryRepository categoryRepository;
+    private final DomainEventPublisher eventPublisher;
 
-    SubCategoryServiceImpl(SubCategoryRepository subCategoryRepository, CategoryRepository categoryRepository){
+    SubCategoryServiceImpl(SubCategoryRepository subCategoryRepository, CategoryRepository categoryRepository,
+                           DomainEventPublisher eventPublisher){
         this.subCategoryRepository = subCategoryRepository;
         this.categoryRepository = categoryRepository;
+        this.eventPublisher = eventPublisher;
     }
 
 
@@ -44,12 +49,15 @@ public class SubCategoryServiceImpl implements SubCategoryService {
         }
 
 
-        return subCategoryRepository.save(subCategory);
+        SubCategory saved = subCategoryRepository.save(subCategory);
+        eventPublisher.publish(EventType.SUBCATEGORY_CREATED, saved.getId(), "Subcategoria " + saved.getName() + " criada");
+        return saved;
     }
 
 
+    // a listagem de produtos traz o nome da subcategoria
     @Override
-    @CacheEvict(value = {"subCategory", "category"}, allEntries = true)
+    @CacheEvict(value = {"subCategory", "category", "product"}, allEntries = true)
     public SubCategory updateSubCategory(SubCategory subCategorie, Long id) {
         Optional<Category> existsCategorie= getExistsCategorie(subCategorie.getCategorieId());
         if (existsCategorie.isEmpty()) {
@@ -74,11 +82,13 @@ public class SubCategoryServiceImpl implements SubCategoryService {
         subCategory.setSlug(subCategorie.getSlug());
         subCategory.setCategorieId(subCategorie.getCategorieId());
 
-        return subCategoryRepository.save(subCategory);
+        SubCategory saved = subCategoryRepository.save(subCategory);
+        eventPublisher.publish(EventType.SUBCATEGORY_UPDATED, saved.getId(), "Subcategoria " + saved.getName() + " atualizada");
+        return saved;
     }
 
     @Override
-    @CacheEvict(value = {"subCategory", "category"}, allEntries = true)
+    @CacheEvict(value = {"subCategory", "category", "product"}, allEntries = true)
     public void deleteSubCategory(Long id) {
         var existsId = subCategoryRepository.findById(id);
         if (existsId.isEmpty()) {
@@ -86,7 +96,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
         }
 
         subCategoryRepository.deleteById(id);
-
+        eventPublisher.publish(EventType.SUBCATEGORY_DELETED, id, "Subcategoria " + existsId.get().getName() + " excluída");
     }
 
     @Override
