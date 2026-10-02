@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -255,7 +256,12 @@ public class ReviewServiceImpl implements ReviewService {
             reviewHelpfulRepository.deleteMark(reviewId, user.getId());
             helpfulByMe = false;
         } else {
-            reviewHelpfulRepository.save(new ReviewHelpful(reviewId, user.getId()));
+            try {
+                reviewHelpfulRepository.saveAndFlush(new ReviewHelpful(reviewId, user.getId()));
+            } catch (DataIntegrityViolationException e) {
+                // clique duplo/requisições simultâneas: a marcação já foi gravada pela outra
+                log.debug("Marcação de útil já existente para review {} e usuário {}", reviewId, user.getId());
+            }
             helpfulByMe = true;
         }
 

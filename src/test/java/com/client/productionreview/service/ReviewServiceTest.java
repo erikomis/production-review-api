@@ -379,13 +379,28 @@ public class ReviewServiceTest {
         assertTrue(marked.isHelpfulByMe());
         assertEquals(1L, marked.getHelpfulCount());
         assertEquals(reviewId, marked.getReviewId());
-        verify(reviewHelpfulRepository).save(any(ReviewHelpful.class));
+        verify(reviewHelpfulRepository).saveAndFlush(any(ReviewHelpful.class));
 
         HelpfulResponseDTO unmarked = reviewService.toggleHelpful(reviewId, otherUser);
 
         assertFalse(unmarked.isHelpfulByMe());
         assertEquals(0L, unmarked.getHelpfulCount());
         verify(reviewHelpfulRepository).deleteMark(reviewId, otherUser.getId());
+    }
+
+    @Test
+    public void testToggleHelpful_concurrentDoubleClickStaysMarked() {
+        when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(existingReview()));
+        when(reviewHelpfulRepository.existsByReviewIdAndUserId(reviewId, otherUser.getId())).thenReturn(false);
+        // a outra requisição gravou a marcação entre o exists e o insert
+        when(reviewHelpfulRepository.saveAndFlush(any(ReviewHelpful.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate key"));
+        when(reviewHelpfulRepository.countByReviewId(reviewId)).thenReturn(1L);
+
+        HelpfulResponseDTO result = reviewService.toggleHelpful(reviewId, otherUser);
+
+        assertTrue(result.isHelpfulByMe());
+        assertEquals(1L, result.getHelpfulCount());
     }
 
     @Test
