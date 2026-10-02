@@ -22,6 +22,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
             + "WHERE r.productId = :productId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
     RatingSummary getRatingSummary(@Param("productId") Long productId);
 
+    @Query("SELECT COUNT(r) AS totalReviews, AVG(r.note) AS averageNote FROM Review r "
+            + "WHERE r.userId = :userId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
+    RatingSummary getUserRatingSummary(@Param("userId") Long userId);
+
+    /** Marcações de "útil" recebidas nas reviews visíveis do usuário. */
+    @Query("SELECT COUNT(h) FROM ReviewHelpful h JOIN Review r ON r.id = h.reviewId "
+            + "WHERE r.userId = :userId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
+    long countHelpfulReceived(@Param("userId") Long userId);
+
     @Query("SELECT r.note AS note, COUNT(r) AS total FROM Review r "
             + "WHERE r.productId = :productId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE "
             + "GROUP BY r.note")
