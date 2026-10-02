@@ -12,4 +12,6 @@ public interface SubCategoryRepository extends JpaRepository<SubCategory, Long> 
 
     boolean existsByCategorieId(Long categorieId);
 
+    Optional<SubCategory> findBySlug(String slug);
+
 }

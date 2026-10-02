@@ -33,6 +33,9 @@ class CategoryServiceTest {
     @Mock
     private  SubCategoryRepository subCategoryRepository;
 
+    @Mock
+    private DomainEventPublisher eventPublisher;
+
 
     @Test
     void  givenCategory_whenAddCategory_thenReturnCategory() {
