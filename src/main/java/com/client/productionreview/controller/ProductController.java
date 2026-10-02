@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Objects;
 
 @RestController
 @RequestMapping(value = "/api/v1/production")
@@ -57,6 +56,13 @@ public class ProductController {
         Pageable pageable = PaginationUtils.createPageable(page, size, property,sort != null ? sort.name() : null);
         return productService.getAllProduct(pageable, search);
 
+    }
+
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public ProductResponseDTO getProduction(@PathVariable("id") Long id) {
+        return productMapper.toDTO(productService.getProduct(id));
     }
 
 
