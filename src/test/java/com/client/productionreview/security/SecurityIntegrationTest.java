@@ -84,6 +84,10 @@ class SecurityIntegrationTest {
     @MockBean
     private UserDetailsService userDetailsService;
 
+    // usa o cache Redis (indisponível nos testes)
+    @MockBean
+    private com.client.productionreview.service.SeoService seoService;
+
     private User admin;
     private User commonUser;
 
@@ -378,5 +382,66 @@ class SecurityIntegrationTest {
             org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("Secure"), cookie);
             org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("HttpOnly"), cookie);
         }
+    }
+
+    // ---------- fase 3: rotas novas ----------
+
+    @Test
+    void phase3PublicRoutes_doNotRequireLogin() throws Exception {
+        when(seoService.sitemap()).thenReturn("<urlset/>");
+        when(productService.suggest("ca", 8)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/v1/users/{username}", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("admin"))
+                .andExpect(jsonPath("$.email").doesNotExist());
+        mockMvc.perform(get("/api/v1/seo/sitemap.xml")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/production/suggest").param("q", "ca")).andExpect(status().isOk());
+        // chave fora dos prefixos permitidos: 400 (e não 401)
+        mockMvc.perform(get("/api/v1/files/outro/arquivo.txt")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void phase3UserRoutes_requireLogin() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/notifications/unread-count")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/user/me/preferences")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/user/me/following")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/production/{id}/follow", 1L)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/review/{id}/report", 1L).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"SPAM\"}")).andExpect(status().isUnauthorized());
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 1L)
+                .file(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1}))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void notifications_andPreferences_withLogin() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications").cookie(accessCookie(commonUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+        mockMvc.perform(get("/api/v1/notifications/unread-count").cookie(accessCookie(commonUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(0));
+        mockMvc.perform(patch("/api/v1/user/me/preferences").cookie(accessCookie(commonUser))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"emailNotifications\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailNotifications").value(false));
+        mockMvc.perform(get("/api/v1/user/me/preferences").cookie(accessCookie(commonUser)))
+                .andExpect(jsonPath("$.emailNotifications").value(false));
+    }
+
+    @Test
+    void phase3AdminRoutes_requireAdmin() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/reviews/export.csv").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/catalog/deduplicate").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/admin/reviews/moderation").cookie(accessCookie(commonUser))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"ids\":[1],\"status\":\"VISIBLE\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/admin/reviews/{id}/reply", 1L).cookie(accessCookie(commonUser))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"oi\"}")).andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/admin/users/export.csv").cookie(accessCookie(admin)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
     }
 }

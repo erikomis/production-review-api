@@ -81,7 +81,10 @@ public class SecurityConfig {
             "/api/v1/category/**",
             "/api/v1/sub-categorie/**",
             "/api/v1/production/**",
-            "/api/v1/review/**"
+            "/api/v1/review/**",
+            "/api/v1/files/**",
+            "/api/v1/seo/**",
+            "/api/v1/users/**"
     };
 
 

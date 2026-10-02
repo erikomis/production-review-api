@@ -56,7 +56,7 @@ public class ProductImageServiceImpl implements ProductImageService {
 
     @Transactional
     @Override
-    @CacheEvict(value = "product", allEntries = true)
+    @CacheEvict(value = {"product", "seo"}, allEntries = true)
     public ProductImage createProductImage(MultipartFile file, Long idProduct) {
 
         if (file == null || file.isEmpty()) {
@@ -94,7 +94,7 @@ public class ProductImageServiceImpl implements ProductImageService {
     }
 
     @Override
-    @CacheEvict(value = "product", allEntries = true)
+    @CacheEvict(value = {"product", "seo"}, allEntries = true)
     public void deleteFile(Long idProductImage) {
 
         ProductImage productImage = productImageRepository.findById(idProductImage)

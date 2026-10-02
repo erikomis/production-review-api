@@ -36,7 +36,7 @@ public class CategoryServiceImpl implements CategoryService {
 
 
     @Override
-    @CacheEvict(value = "category", allEntries = true)
+    @CacheEvict(value = {"category", "seo"}, allEntries = true)
     public Category addCategory(Category category) {
         Optional<Category> exists = categoryRepository.findByName(category.getName());
 
@@ -52,7 +52,7 @@ public class CategoryServiceImpl implements CategoryService {
     // a lista de categorias fica no mesmo cache, então tudo é invalidado;
     // a listagem de produtos traz o nome da categoria
     @Override
-    @CacheEvict(value = {"category", "product"}, allEntries = true)
+    @CacheEvict(value = {"category", "product", "seo"}, allEntries = true)
     public Category updateCategory(Category category, Long id) {
         Category current = categoryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Categorie not found"));
@@ -73,7 +73,7 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     @Override
-    @CacheEvict(value = {"category", "product"}, allEntries = true)
+    @CacheEvict(value = {"category", "product", "seo"}, allEntries = true)
     public void deleteCategory(Long id) {
 
         Category current = categoryRepository.findById(id)
