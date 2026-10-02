@@ -67,6 +67,21 @@ public class SubCategorieRepositoryTest {
     }
 
     @Test
+    public void deleteById_reallyRemovesSubCategory() {
+        Long id = subCategorieRepository.findByName("sub1").orElseThrow().getId();
+        entityManager.clear();
+
+        // carrega como o service faz antes de excluir
+        subCategorieRepository.findById(id).orElseThrow();
+        subCategorieRepository.deleteById(id);
+        entityManager.flush();
+        entityManager.clear();
+
+        // antes: o cascade de Category.subCategories desfazia a remoção e o DELETE respondia 204 sem apagar
+        assertTrue(subCategorieRepository.findById(id).isEmpty());
+    }
+
+    @Test
     public void existsByCategorieId_worksWithMultipleSubCategories() {
         assertTrue(subCategorieRepository.existsByCategorieId(categorie1.getId()));
         assertFalse(subCategorieRepository.existsByCategorieId(categorie2.getId()));

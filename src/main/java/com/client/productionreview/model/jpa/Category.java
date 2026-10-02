@@ -39,7 +39,9 @@ public class Category  implements  Serializable {
     private String slug;
 
     @JsonManagedReference
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true,fetch = FetchType.EAGER)
+    // sem cascade: o cascade ALL + orphanRemoval desfazia o DELETE de subcategoria
+    // (a exclusão de categoria com subcategorias já é bloqueada no service)
+    @OneToMany(mappedBy = "category", fetch = FetchType.EAGER)
     private List <SubCategory> subCategories;
 
     @CreationTimestamp

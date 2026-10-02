@@ -29,7 +29,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
 
     @Override
-    @CacheEvict(value = "subCategory", allEntries = true)
+    @CacheEvict(value = {"subCategory", "category"}, allEntries = true)
     public SubCategory addSubCategory(SubCategory subCategory) {
         Optional<Category> existsCategorie = getExistsCategorie(subCategory.getCategorieId());
 
@@ -49,7 +49,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
 
     @Override
-    @CacheEvict(value = "subCategory", allEntries = true)
+    @CacheEvict(value = {"subCategory", "category"}, allEntries = true)
     public SubCategory updateSubCategory(SubCategory subCategorie, Long id) {
         Optional<Category> existsCategorie= getExistsCategorie(subCategorie.getCategorieId());
         if (existsCategorie.isEmpty()) {
@@ -78,7 +78,7 @@ public class SubCategoryServiceImpl implements SubCategoryService {
     }
 
     @Override
-    @CacheEvict(value = "subCategory", allEntries = true)
+    @CacheEvict(value = {"subCategory", "category"}, allEntries = true)
     public void deleteSubCategory(Long id) {
         var existsId = subCategoryRepository.findById(id);
         if (existsId.isEmpty()) {
