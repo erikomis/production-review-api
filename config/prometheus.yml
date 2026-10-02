@@ -1,10 +1,25 @@
+# Prometheus do Production Review.
+# As métricas ficam nas portas de gerenciamento (não publicadas): API em 8085 e serviço de logs em 8090.
 global:
-  scrape_interval: 6s
+  scrape_interval: 15s
+  evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'production-review'
+  - job_name: "production-review-api"
     metrics_path: "/actuator/prometheus"
     static_configs:
-      - targets: [ "web:8084" ]
+      - targets: ["web:8085"]
         labels:
-          application: "production-review"
+          service: "api"
+
+  # serviço de auditoria (production-review-api-logs); fica "down" enquanto não estiver implantado
+  - job_name: "production-review-api-logs"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["logs:8090"]
+        labels:
+          service: "logs"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

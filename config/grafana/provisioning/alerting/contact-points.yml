@@ -1,0 +1,20 @@
+# Notificações por e-mail, usando o SMTP configurado no container (GF_SMTP_*).
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: E-mail da equipe
+    receivers:
+      - uid: email-equipe
+        type: email
+        settings:
+          addresses: ${ALERT_EMAIL}
+          singleEmail: true
+
+policies:
+  - orgId: 1
+    receiver: E-mail da equipe
+    group_by: ["grafana_folder", "alertname"]
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 4h

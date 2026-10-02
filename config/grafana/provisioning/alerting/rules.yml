@@ -1,0 +1,260 @@
+# Alertas gerenciados pelo Grafana. As notificações vão para o contato "E-mail da equipe".
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Production Review
+    folder: ReviewStore
+    interval: 1m
+    rules:
+      - uid: api-fora-do-ar
+        title: "API fora do ar"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "up{job=\"production-review-api\"}"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "A API do Production Review não responde"
+          description: "O Prometheus não consegue coletar métricas da API há mais de 1 minuto (container parado, travado ou porta 8085 inacessível)."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: api-taxa-de-erros
+        title: "Taxa de erros 5xx alta"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "100 * sum(rate(http_server_requests_seconds_count{application=\"production-review\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_server_requests_seconds_count{application=\"production-review\",uri!=\"/api/v1/notification/sse\"}[5m])), 0.001)"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [5] }
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mais de 5% das requisições estão falhando com erro 5xx"
+          description: "Taxa de erros 5xx da API: {{ humanize $values.B.Value }}% nos últimos 5 minutos."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: api-latencia-p95
+        title: "Latência p95 alta"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{application=\"production-review\",uri!=\"/api/v1/notification/sse\"}[5m])))"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [1] }
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "95% das requisições estão levando mais de 1 segundo"
+          description: "Latência p95 da API: {{ humanize $values.B.Value }} s (fora o stream SSE de notificações)."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: api-pool-banco
+        title: "Pool de conexões do banco esgotado"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "max(hikaricp_connections_pending{application=\"production-review\"})"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Requisições estão esperando conexão com o MariaDB"
+          description: "Há {{ $values.B.Value }} requisição(ões) aguardando uma conexão livre no pool do banco."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: api-memoria-heap
+        title: "Memória heap da JVM quase cheia"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "100 * sum(jvm_memory_used_bytes{application=\"production-review\",area=\"heap\"}) / sum(jvm_memory_max_bytes{application=\"production-review\",area=\"heap\"} > 0)"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [90] }
+        noDataState: OK
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A API está usando mais de 90% da memória heap"
+          description: "Uso de heap: {{ humanize $values.B.Value }}%. Risco de OutOfMemoryError."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: auditoria-kafka-falhas
+        title: "Eventos de auditoria não chegam ao Kafka"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "sum(increase(reviewstore_kafka_publish_total{application=\"production-review\",result=\"failure\"}[10m]))"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "A API não está conseguindo publicar eventos de auditoria"
+          description: "{{ humanize $values.B.Value }} evento(s) não foram entregues ao Kafka nos últimos 10 minutos. A tela Atividade ficará incompleta."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
+
+      - uid: auditoria-mensagens-invalidas
+        title: "Mensagens inválidas na fila de auditoria"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: "sum(increase(reviewstore_logs_events_total{result=\"dead_letter\"}[15m]))"
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "O serviço de logs recebeu mensagens que não conseguiu processar"
+          description: "{{ humanize $values.B.Value }} mensagem(ns) foram para o tópico production-review-api.DLT nos últimos 15 minutos."
+          runbook_url: "https://github.com/erikomis/production-review-api#-observabilidade"
