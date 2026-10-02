@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -38,6 +40,9 @@ public class ReviewResponseDTO implements Serializable {
 
     private String userName;
 
+    /** Para linkar o perfil público ({@code /u/{username}}). */
+    private String userUsername;
+
     private long helpfulCount;
 
     /** false quando não há usuário logado. */
@@ -52,11 +57,24 @@ public class ReviewResponseDTO implements Serializable {
     /** Nome do admin que moderou por último (só faz sentido na moderação). */
     private String moderatedByName;
 
+    @Builder.Default
+    private List<ReviewImageDTO> images = new ArrayList<>();
+
+    /** true se o usuário logado já denunciou a review. */
+    private boolean reportedByMe;
+
+    /** Denúncias pendentes (preenchido só na listagem de moderação). */
+    private long reportsCount;
+
+    /** Resposta oficial da equipe; null se não houver. */
+    private ReviewReplyDTO reply;
+
     /** Usado pela projeção JPQL das listagens. */
     public ReviewResponseDTO(Long id, String title, String description, Long note, Long productId, Long userId,
                              Instant createdAt, String productName, String productSlug, String userName,
-                             ReviewStatus status, String moderationReason, Instant moderatedAt,
-                             String moderatedByName, Long helpfulCount) {
+                             String userUsername, ReviewStatus status, String moderationReason, Instant moderatedAt,
+                             String moderatedByName, String replyText, Instant repliedAt, String replyAuthorName,
+                             Long helpfulCount) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -71,6 +89,9 @@ public class ReviewResponseDTO implements Serializable {
         this.moderationReason = moderationReason;
         this.moderatedAt = moderatedAt;
         this.moderatedByName = moderatedByName;
+        this.userUsername = userUsername == null ? null : userUsername.trim();
+        this.reply = replyText == null ? null : new ReviewReplyDTO(replyText, replyAuthorName, repliedAt);
+        this.images = new ArrayList<>();
         this.helpfulCount = helpfulCount == null ? 0L : helpfulCount;
     }
 }

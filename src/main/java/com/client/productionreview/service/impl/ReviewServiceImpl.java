@@ -17,9 +17,13 @@ import com.client.productionreview.model.jpa.ReviewStatus;
 import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.ReviewHelpfulRepository;
+import com.client.productionreview.repositories.jpa.ReviewReportRepository;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
+import com.client.productionreview.repositories.jpa.UserRepository;
 import com.client.productionreview.security.CurrentUser;
 import com.client.productionreview.service.DomainEventPublisher;
+import com.client.productionreview.service.NotificationService;
+import com.client.productionreview.service.ReviewImageService;
 import com.client.productionreview.service.ReviewService;
 import com.client.productionreview.utils.RatingUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -57,19 +61,37 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final DomainEventPublisher eventPublisher;
 
+    private final ReviewEnricher reviewEnricher;
+
+    private final NotificationService notificationService;
+
+    private final ReviewImageService reviewImageService;
+
+    private final ReviewReportRepository reviewReportRepository;
+
+    private final UserRepository userRepository;
+
     public ReviewServiceImpl(ReviewRepository reviewRepository, ProductRepository productRepository,
-                             ReviewHelpfulRepository reviewHelpfulRepository, DomainEventPublisher eventPublisher) {
+                             ReviewHelpfulRepository reviewHelpfulRepository, DomainEventPublisher eventPublisher,
+                             ReviewEnricher reviewEnricher, NotificationService notificationService,
+                             ReviewImageService reviewImageService, ReviewReportRepository reviewReportRepository,
+                             UserRepository userRepository) {
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
         this.reviewHelpfulRepository = reviewHelpfulRepository;
         this.eventPublisher = eventPublisher;
+        this.reviewEnricher = reviewEnricher;
+        this.notificationService = notificationService;
+        this.reviewImageService = reviewImageService;
+        this.reviewReportRepository = reviewReportRepository;
+        this.userRepository = userRepository;
     }
 
 
 
     // a nota média e o total aparecem na listagem e no detalhe de produtos
     @Override
-    @CacheEvict(value = {"review", "product"}, allEntries = true)
+    @CacheEvict(value = {"review", "product", "seo"}, allEntries = true)
     public Review saveReview(Review review, String nameUser) {
 
         Product product = getProduct(review.getProductId());
@@ -88,6 +110,9 @@ public class ReviewServiceImpl implements ReviewService {
         }
         reviewSink.tryEmitNext(event);
 
+        // quem segue o produto é avisado (no site e por e-mail)
+        notificationService.followedProductReview(saved, product, nameUser);
+
         return saved;
     }
 
@@ -99,7 +124,7 @@ public class ReviewServiceImpl implements ReviewService {
 
     // editar não muda o status de moderação
     @Override
-    @CacheEvict(value = {"review", "product"}, allEntries = true)
+    @CacheEvict(value = {"review", "product", "seo"}, allEntries = true)
     public Review updateReview(Review review, Long id, User currentUser) {
 
         Product product = getProduct(review.getProductId());
@@ -120,15 +145,17 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     @Override
-    @CacheEvict(value = {"review", "product"}, allEntries = true)
+    @CacheEvict(value = {"review", "product", "seo"}, allEntries = true)
     public void deleteReview(Long id, User currentUser) {
 
         Review current = getReview(id);
 
         checkOwnership(current, currentUser);
 
-        // o H2 dos testes não tem o ON DELETE CASCADE da migração
+        // o H2 dos testes não tem o ON DELETE CASCADE da migração; as fotos também saem do storage
         reviewHelpfulRepository.deleteByReview(id);
+        reviewReportRepository.deleteByReview(id);
+        reviewImageService.deleteAllForReview(id);
         reviewRepository.deleteById(id);
 
         String productName = productRepository.findById(current.getProductId())
@@ -171,6 +198,7 @@ public class ReviewServiceImpl implements ReviewService {
         }
 
         fillHelpfulByMe(List.of(dto));
+        reviewEnricher.enrich(List.of(dto), false);
         return dto;
     }
 
@@ -201,8 +229,18 @@ public class ReviewServiceImpl implements ReviewService {
                 ReviewSearch.builder().userId(userId).sort(ReviewSort.recent).build(), pageable));
     }
 
+    @Override
+    public Page<ReviewResponseDTO> getUserReviews(String username, Pageable pageable) {
+        User user = userRepository.findByUsername(username)
+                .filter(found -> Boolean.TRUE.equals(found.getActive()))
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        return withHelpfulByMe(reviewRepository.searchDetails(ReviewSearch.builder()
+                .userId(user.getId()).status(ReviewStatus.VISIBLE).sort(ReviewSort.recent).build(), pageable));
+    }
+
     private Page<ReviewResponseDTO> withHelpfulByMe(Page<ReviewResponseDTO> page) {
         fillHelpfulByMe(page.getContent());
+        reviewEnricher.enrich(page.getContent(), false);
         return page;
     }
 
@@ -265,7 +303,11 @@ public class ReviewServiceImpl implements ReviewService {
             helpfulByMe = true;
         }
 
-        return new HelpfulResponseDTO(reviewId, reviewHelpfulRepository.countByReviewId(reviewId), helpfulByMe);
+        long helpfulCount = reviewHelpfulRepository.countByReviewId(reviewId);
+        if (helpfulByMe) {
+            notificationService.reviewHelpful(review, helpfulCount);
+        }
+        return new HelpfulResponseDTO(reviewId, helpfulCount, helpfulByMe);
     }
 
     public Flux<NotificationDto> getCommentStream() {

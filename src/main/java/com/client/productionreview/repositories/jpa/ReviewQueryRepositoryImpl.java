@@ -17,16 +17,18 @@ import java.util.Map;
 public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
 
     private static final String SELECT = "SELECT new com.client.productionreview.dtos.review.ReviewResponseDTO("
-            + "r.id, r.title, r.description, r.note, r.productId, r.userId, r.createdAt, p.name, p.slug, u.name, "
-            + "r.status, r.moderationReason, r.moderatedAt, m.name, COUNT(h.userId)) "
+            + "r.id, r.title, r.description, r.note, r.productId, r.userId, r.createdAt, p.name, p.slug, u.name, u.username, "
+            + "r.status, r.moderationReason, r.moderatedAt, m.name, r.replyText, r.repliedAt, ra.name, COUNT(h.userId)) "
             + "FROM Review r "
             + "LEFT JOIN Product p ON p.id = r.productId "
             + "LEFT JOIN User u ON u.id = r.userId "
             + "LEFT JOIN User m ON m.id = r.moderatedBy "
+            + "LEFT JOIN User ra ON ra.id = r.replyAuthorId "
             + "LEFT JOIN ReviewHelpful h ON h.reviewId = r.id";
 
     private static final String GROUP_BY = " GROUP BY r.id, r.title, r.description, r.note, r.productId, r.userId, "
-            + "r.createdAt, p.name, p.slug, u.name, r.status, r.moderationReason, r.moderatedAt, m.name";
+            + "r.createdAt, p.name, p.slug, u.name, u.username, r.status, r.moderationReason, r.moderatedAt, m.name, "
+            + "r.replyText, r.repliedAt, ra.name";
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -76,6 +78,9 @@ public class ReviewQueryRepositoryImpl implements ReviewQueryRepository {
         if (search.search() != null && !search.search().isBlank()) {
             clauses.add("(LOWER(r.title) LIKE :search OR LOWER(r.description) LIKE :search)");
             params.put("search", "%" + search.search().trim().toLowerCase() + "%");
+        }
+        if (search.reported() != null) {
+            clauses.add((search.reported() ? "" : "NOT ") + "EXISTS (SELECT 1 FROM ReviewReport rr WHERE rr.reviewId = r.id)");
         }
         return clauses.isEmpty() ? "" : " WHERE " + String.join(" AND ", clauses);
     }

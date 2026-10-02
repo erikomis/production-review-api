@@ -69,6 +69,22 @@ public class ReviewServiceTest {
     @Mock
     private DomainEventPublisher eventPublisher;
 
+    // dependências novas (fase 3): fotos, denúncias, notificações e perfil
+    @Mock
+    private com.client.productionreview.service.impl.ReviewEnricher reviewEnricher;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private ReviewImageService reviewImageService;
+
+    @Mock
+    private com.client.productionreview.repositories.jpa.ReviewReportRepository reviewReportRepository;
+
+    @Mock
+    private com.client.productionreview.repositories.jpa.UserRepository userRepository;
+
     private Review review;
     private Product product;
     private User owner;
@@ -497,4 +513,67 @@ public class ReviewServiceTest {
         };
     }
 
+
+    // ---------- fase 3 ----------
+
+    @Test
+    public void testSaveReview_notifiesFollowers() {
+        review.setUserId(owner.getId());
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(review)).thenReturn(review);
+
+        reviewService.saveReview(review, "nameUser");
+
+        verify(notificationService).followedProductReview(review, product, "nameUser");
+    }
+
+    @Test
+    public void testToggleHelpful_markNotifiesAuthor_unmarkDoesNot() {
+        Review existing = existingReview();
+        when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(existing));
+        when(reviewHelpfulRepository.existsByReviewIdAndUserId(reviewId, otherUser.getId())).thenReturn(false, true);
+        when(reviewHelpfulRepository.countByReviewId(reviewId)).thenReturn(3L, 2L);
+
+        reviewService.toggleHelpful(reviewId, otherUser);
+        reviewService.toggleHelpful(reviewId, otherUser);
+
+        verify(notificationService, times(1)).reviewHelpful(existing, 3L);
+    }
+
+    @Test
+    public void testDeleteReview_removesImagesAndReports() {
+        when(reviewRepository.findById(reviewId)).thenReturn(Optional.of(existingReview()));
+
+        reviewService.deleteReview(reviewId, owner);
+
+        verify(reviewReportRepository).deleteByReview(reviewId);
+        verify(reviewImageService).deleteAllForReview(reviewId);
+        verify(reviewRepository).deleteById(reviewId);
+    }
+
+    @Test
+    public void testGetUserReviews_onlyVisibleOfActiveUser() {
+        User maria = User.builder().id(30L).username("maria").active(true).build();
+        when(userRepository.findByUsername("maria")).thenReturn(Optional.of(maria));
+        when(reviewRepository.searchDetails(any(), any())).thenReturn(new PageImpl<>(List.of(
+                ReviewResponseDTO.builder().id(5L).build())));
+
+        assertEquals(1, reviewService.getUserReviews("maria", PageRequest.of(0, 10)).getTotalElements());
+
+        ArgumentCaptor<ReviewSearch> search = ArgumentCaptor.forClass(ReviewSearch.class);
+        verify(reviewRepository).searchDetails(search.capture(), any());
+        assertEquals(30L, search.getValue().userId());
+        assertEquals(ReviewStatus.VISIBLE, search.getValue().status());
+        verify(reviewEnricher).enrich(any(), eq(false));
+    }
+
+    @Test
+    public void testGetUserReviews_inactiveOrMissingIs404() {
+        when(userRepository.findByUsername("inativo"))
+                .thenReturn(Optional.of(User.builder().id(31L).username("inativo").active(false).build()));
+        when(userRepository.findByUsername("ninguem")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> reviewService.getUserReviews("inativo", PageRequest.of(0, 10)));
+        assertThrows(NotFoundException.class, () -> reviewService.getUserReviews("ninguem", PageRequest.of(0, 10)));
+    }
 }
