@@ -1,14 +1,14 @@
 package com.client.productionreview.service.impl;
 
-import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.exception.IoFileException;
 import com.client.productionreview.service.StorageService;
 import io.minio.*;
-import io.minio.errors.MinioException;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 
+@Slf4j
 @Service
 public class StorageServiceImpl implements StorageService {
 
@@ -18,7 +18,8 @@ public class StorageServiceImpl implements StorageService {
         this.minioClient = minioClient;
     }
 
-    public ObjectWriteResponse uploadFile(String bucketName, String objectName, InputStream inputStream, String contentType) {
+    @Override
+    public ObjectWriteResponse uploadFile(String bucketName, String objectName, InputStream inputStream, long size, String contentType) {
 
         try {
             boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
@@ -26,34 +27,25 @@ public class StorageServiceImpl implements StorageService {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
             }
             return minioClient.putObject(
-                    PutObjectArgs.builder().bucket(bucketName).object(objectName).stream(
-                                    inputStream, inputStream.available(), -1)
+                    PutObjectArgs.builder().bucket(bucketName).object(objectName)
+                            .stream(inputStream, size, -1)
                             .contentType(contentType)
                             .build());
 
-        } catch (MinioException e) {
-            throw new NotFoundException(e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException("Error occurred: " + e.getMessage());
+            log.error("Erro ao enviar arquivo {} para o storage", objectName, e);
+            throw new IoFileException("Erro ao enviar arquivo para o storage");
         }
-
-
     }
 
     @Override
     public void deleteFile(String bucketName, String objectName) {
         try {
-            boolean found = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
-            if (!found) {
-                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-            }
             minioClient.removeObject(RemoveObjectArgs.builder().bucket(bucketName).object(objectName).build());
         } catch (Exception e) {
-            throw new NotFoundException("Error occurred: " + e.getMessage());
+            log.error("Erro ao remover arquivo {} do storage", objectName, e);
+            throw new IoFileException("Erro ao remover arquivo do storage");
         }
-
-
     }
-
 
 }
