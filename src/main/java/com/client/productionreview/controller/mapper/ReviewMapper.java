@@ -26,6 +26,8 @@ public class ReviewMapper {
         reviewResponseDTO.setDescription(review.getDescription());
         reviewResponseDTO.setNote(review.getNote());
         reviewResponseDTO.setProductId(review.getProductId());
+        reviewResponseDTO.setUserId(review.getUserId());
+        reviewResponseDTO.setCreatedAt(review.getCreatedAt());
         return reviewResponseDTO;
     }
 

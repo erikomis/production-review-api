@@ -5,25 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ReviewResponseDTO {
-
-    private Long id;
-
-    private String title;
-
-    private String description;
-
-    private  Long  note;
+public class ReviewSummaryDTO {
 
     private Long productId;
 
-    private Long userId;
+    private Long totalReviews;
 
-    private LocalDateTime createdAt;
+    /** Média das notas arredondada para uma casa decimal; 0 quando não há reviews. */
+    private Double averageNote;
 }
