@@ -103,7 +103,10 @@ public class SubCategoryServiceImpl implements SubCategoryService {
     @Override
     @Cacheable(value = "subCategory")
     public List<SubCategory> getAllSubCategorie() {
-        return subCategoryRepository.findAll();
+
+        List<SubCategory> subCategories = subCategoryRepository.findAll();
+
+        return  subCategories;
     }
 
 

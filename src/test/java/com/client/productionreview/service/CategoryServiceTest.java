@@ -3,7 +3,9 @@ package com.client.productionreview.service;
 import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.model.jpa.Category;
+import com.client.productionreview.model.jpa.SubCategory;
 import com.client.productionreview.repositories.jpa.CategoryRepository;
+import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 
 import java.util.List;
+
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -27,7 +30,8 @@ class CategoryServiceTest {
     @Mock
     private CategoryRepository categorieRepository;
 
-
+    @Mock
+    private  SubCategoryRepository subCategoryRepository;
 
 
     @Test
@@ -40,7 +44,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.save(category)).thenReturn(category);
 
-       assertEquals(category, categoryService.addCatogory(category));
+        assertEquals(category, categoryService.addCategory(category));
 
         verify(categorieRepository, times(1)).save(category);
 
@@ -58,7 +62,7 @@ class CategoryServiceTest {
         when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(category));
 
         assertThrows(BusinessExcepion.class, () -> {
-            categoryService.addCatogory(category);
+            categoryService.addCategory(category);
         });
 
         verify(categorieRepository, times(1)).findByName(category.getName());
@@ -78,7 +82,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
         when(categorieRepository.save(category)).thenReturn(category);
 
-        categoryService.updateCatogory(category, id);
+        categoryService.updateCategory(category, id);
 
         verify(categorieRepository, times(1)).findById(id);
         verify(categorieRepository, times(1)).findByName(category.getName());
@@ -98,7 +102,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThrows(NotFoundException.class, () -> {
-            categoryService.updateCatogory(category, id);
+            categoryService.updateCategory(category, id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -120,7 +124,7 @@ class CategoryServiceTest {
         when(categorieRepository.findByName(category.getName())).thenReturn(java.util.Optional.of(category));
 
         assertThrows(BusinessExcepion.class, () -> {
-            categoryService.updateCatogory(category, id);
+            categoryService.updateCategory(category, id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -143,7 +147,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
 
-        categoryService.deleteCatogory(id);
+        categoryService.deleteCategory(id);
 
         verify(categorieRepository, times(1)).findById(id);
         verify(categorieRepository, times(1)).deleteById(id);
@@ -151,7 +155,7 @@ class CategoryServiceTest {
     }
 
     @Test
-    void  givenCategoryId_whenDeleteCategory_thenThrowException() {
+    void  givenCategoryId_whenDeleteCategory_thenThrowExceptionNotFound() {
 
         Long id = 1L;
         Category category = new Category();
@@ -161,8 +165,34 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
+
         assertThrows(NotFoundException.class, () -> {
-            categoryService.deleteCatogory(id);
+            categoryService.deleteCategory(id);
+        });
+
+        verify(categorieRepository, times(1)).findById(id);
+        verify(categorieRepository, times(0)).deleteById(id);
+
+    }
+
+    @Test
+    void  givenCategoryId_whenDeleteCategory_thenThrowExceptionBusiness() {
+
+        Long id = 1L;
+        Category category = new Category();
+        category.setName("category");
+        category.setDescription("description");
+        category.setSlug("slug");
+
+        SubCategory subCategory = new SubCategory();
+        subCategory.setId(1L);
+        subCategory.setName("subCategory");
+
+        when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
+        when(subCategoryRepository.findByCategorieId(id)).thenReturn(java.util.Optional.of(subCategory));
+
+        assertThrows(BusinessExcepion.class, () -> {
+            categoryService.deleteCategory(id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -182,7 +212,7 @@ class CategoryServiceTest {
 
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.of(category));
 
-        categoryService.getCatogory(id);
+        categoryService.getCategory(id);
 
         verify(categorieRepository, times(1)).findById(id);
 
@@ -199,7 +229,7 @@ class CategoryServiceTest {
         when(categorieRepository.findById(id)).thenReturn(java.util.Optional.empty());
 
         assertThrows(NotFoundException.class, () -> {
-            categoryService.getCatogory(id);
+            categoryService.getCategory(id);
         });
 
         verify(categorieRepository, times(1)).findById(id);
@@ -213,11 +243,10 @@ class CategoryServiceTest {
         category.setName("category");
         category.setDescription("description");
         category.setSlug("slug");
-        category.setSubCategories(List.of());
 
         when(categorieRepository.findAll()).thenReturn(List.of(category));
 
-        assertEquals(List.of(category), categoryService.getAllCatogories());
+        assertEquals(List.of(category), categoryService.getAllCategories());
 
         verify(categorieRepository, times(1)).findAll();
 

@@ -8,12 +8,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class ReviewMapper {
 
-    public Review toModel(ReviewRequestDTO reviewDto) {
+    public Review toModel(ReviewRequestDTO reviewDto, Long userId) {
         Review review = new Review();
         review.setTitle(reviewDto.getTitle());
         review.setDescription(reviewDto.getDescription());
         review.setNote(reviewDto.getNote());
         review.setProductId(reviewDto.getProductId());
+        review.setUserId(userId);
         return review;
 
     }

@@ -2,16 +2,15 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.NotificationDto;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.message.producer.ProductionReviewApiProducer;
 import com.client.productionreview.model.jpa.Product;
 import com.client.productionreview.model.jpa.Review;
-import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.ReviewRepository;
 import com.client.productionreview.service.ReviewService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
@@ -29,9 +28,12 @@ public class ReviewServiceImpl implements ReviewService {
 
     ProductRepository productRepository;
 
-    public ReviewServiceImpl(ReviewRepository reviewRepository, ProductRepository productRepository) {
+    ProductionReviewApiProducer productionReviewApiProducer;
+
+    public ReviewServiceImpl(ReviewRepository reviewRepository, ProductRepository productRepository, ProductionReviewApiProducer productionReviewApiProducer) {
         this.reviewRepository = reviewRepository;
         this.productRepository = productRepository;
+        this.productionReviewApiProducer = productionReviewApiProducer;
     }
 
 
@@ -46,25 +48,22 @@ public class ReviewServiceImpl implements ReviewService {
             throw new NotFoundException("Product not found");
         }
 
-            NotificationDto notificationDto = new NotificationDto();
-            notificationDto.setNameUser(nameUser);
-            notificationDto.setAction("criacap de comentario" + product.get().getName());
-            notificationDto.setMessage("Comentario criado com sucesso");
+        NotificationDto notificationDto = new NotificationDto();
+        notificationDto.setNameUser(nameUser);
+        notificationDto.setAction("criacao de comentario " + product.get().getName());
+        notificationDto.setMessage("Comentario criado com sucesso " + review.getDescription());
 
-            reviewSink.tryEmitNext(notificationDto);
+        productionReviewApiProducer.sendNotification(notificationDto);
+        reviewSink.tryEmitNext(notificationDto);
 
-            return reviewRepository.save(review);
-
-
-
+        return reviewRepository.save(review);
 
 
     }
 
 
     private Optional<Product> getProduct(Review review) {
-        Optional<Product> product = productRepository.findById(review.getProductId());
-        return product;
+       return productRepository.findById(review.getProductId());
     }
 
     @Override
@@ -99,6 +98,7 @@ public class ReviewServiceImpl implements ReviewService {
             throw new NotFoundException("Review not found");
         }
 
+
         reviewRepository.deleteById(id);
 
     }
@@ -116,8 +116,8 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private Optional<Review> getOptionalReview(Long id) {
-        Optional<Review> reviewOptional = reviewRepository.findById(id);
-        return reviewOptional;
+        return reviewRepository.findById(id);
+
     }
 
     @Cacheable(value = "review")

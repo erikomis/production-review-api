@@ -27,7 +27,7 @@ public class SubCategoriaController {
         this.subCategoryMapper = subCategoryMapper;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     @ResponseStatus(HttpStatus.CREATED)
     @SecurityRequirement(name = "jwt_auth")
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'WRITE_PRIVILEGES')")
@@ -64,7 +64,7 @@ public class SubCategoriaController {
 
     }
 
-    @GetMapping
+    @GetMapping("/list")
     @ResponseStatus(HttpStatus.OK)
     public List<SubCategory> getAll() {
        return subCategoryService.getAllSubCategorie();
