@@ -1,6 +1,7 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.CategoryMapper;
+import com.client.productionreview.dtos.category.CategoryDetailDTO;
 import com.client.productionreview.dtos.category.CategoryRequestDTO;
 import com.client.productionreview.dtos.category.CategoryResponseDTO;
 import com.client.productionreview.exception.BusinessExcepion;
@@ -155,5 +156,29 @@ public class CategoryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void getCategoryBySlug_returnsCategoryWithSubCategories() throws Exception {
+        Category category = Category.builder().id(1L).name("Bebidas").description("d").slug("bebidas").build();
+        CategoryDetailDTO detail = new CategoryDetailDTO(1L, "Bebidas", "d", "bebidas",
+                List.of(new CategoryDetailDTO.SubCategoryItem(4L, "Cafés", "c", "cafes")));
+        Mockito.when(categoryService.getCategoryBySlug("bebidas")).thenReturn(category);
+        Mockito.when(categoryMapper.toDetailDTO(category)).thenReturn(detail);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category/slug/{slug}", "bebidas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("bebidas"))
+                .andExpect(jsonPath("$.subCategories", hasSize(1)))
+                .andExpect(jsonPath("$.subCategories[0].slug").value("cafes"))
+                .andExpect(jsonPath("$.subCategories[0].categorieId").doesNotExist());
+    }
+
+    @Test
+    void getCategoryBySlug_notFound() throws Exception {
+        Mockito.when(categoryService.getCategoryBySlug("nope")).thenThrow(new NotFoundException("Categorie not found"));
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/api/v1/category/slug/{slug}", "nope"))
+                .andExpect(status().isNotFound());
     }
 }
