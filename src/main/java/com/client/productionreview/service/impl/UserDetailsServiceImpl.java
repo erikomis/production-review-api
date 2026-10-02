@@ -2,15 +2,18 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.auth.*;
 import com.client.productionreview.exception.BadRequestException;
+import com.client.productionreview.exception.BusinessExcepion;
 import com.client.productionreview.exception.GlobalException;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.integration.MailIntegration;
 import com.client.productionreview.model.jpa.Role;
 import com.client.productionreview.model.jpa.User;
+import com.client.productionreview.model.redis.UserActivationToken;
 import com.client.productionreview.model.redis.UserRecoveryCode;
 import com.client.productionreview.provider.JwtProvider;
 import com.client.productionreview.repositories.jpa.RoleRepository;
 import com.client.productionreview.repositories.jpa.UserRepository;
+import com.client.productionreview.repositories.redis.UserActivationTokenRepository;
 import com.client.productionreview.repositories.redis.UserRecoveryCodeRepository;
 import com.client.productionreview.service.UserDetailsService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,55 +23,65 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
+    static final int MAX_RECOVERY_CODE_ATTEMPTS = 5;
+
+    private static final String INVALID_CREDENTIALS = "Senha ou usuário inválido";
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     private final UserRepository userRepository;
     private final MailIntegration mailIntegration;
     private final UserRecoveryCodeRepository userRecoveryCodeRepository;
+    private final UserActivationTokenRepository userActivationTokenRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
-    @Value("${webservices.productionreview.redis.recoverycode.timeout}")
-    private String recoveryCodeTimeout;
+    private final long recoveryCodeTimeoutMinutes;
+    private final List<String> allowedOrigins;
+    private final String frontendUrl;
 
     public UserDetailsServiceImpl(UserRepository userRepository, MailIntegration mailIntegration, PasswordEncoder passwordEncoder, JwtProvider jwtProvider, UserRecoveryCodeRepository userRecoveryCodeRepository,
-                                  RoleRepository roleRepository) {
+                                  UserActivationTokenRepository userActivationTokenRepository,
+                                  RoleRepository roleRepository,
+                                  @Value("${webservices.productionreview.redis.recoverycode.timeout}") long recoveryCodeTimeoutMinutes,
+                                  @Value("${app.allowed-origins}") List<String> allowedOrigins,
+                                  @Value("${app.frontend-url}") String frontendUrl) {
         this.userRepository = userRepository;
         this.mailIntegration = mailIntegration;
         this.passwordEncoder = passwordEncoder;
         this.jwtProvider = jwtProvider;
         this.userRecoveryCodeRepository = userRecoveryCodeRepository;
+        this.userActivationTokenRepository = userActivationTokenRepository;
         this.roleRepository = roleRepository;
-
+        this.recoveryCodeTimeoutMinutes = recoveryCodeTimeoutMinutes;
+        this.allowedOrigins = allowedOrigins;
+        this.frontendUrl = frontendUrl;
     }
 
 
     @Override
     public AutoSignInDTOResponse loadUserByUsernameAndPass(AuthSignInDTORequest authSignInDTORequest, String origin) {
-        Optional<User> exists = userRepository.findByUsernameOrEmail(authSignInDTORequest.getUsername(), authSignInDTORequest.getUsername());
+        User user = userRepository.findByUsernameOrEmail(authSignInDTORequest.getUsername(), authSignInDTORequest.getUsername())
+                .orElseThrow(() -> new GlobalException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED));
 
-        if (exists.isEmpty()) {
-            throw new NotFoundException("Senha ou usuário inválido");
-        }
-
-        User user = exists.get();
-
-        if(user.getActive()){
-            activateAccount(origin, user);
-            throw new GlobalException("Usuário não ativado",  HttpStatus.FORBIDDEN);
-        }
-
+        // a senha é conferida antes do status da conta para não revelar se o usuário existe/está ativo
         var passwordMatches = passwordEncoder.matches(authSignInDTORequest.getPassword(), user.getPassword());
 
         if (!passwordMatches) {
-            throw new NotFoundException("Senha ou usuário inválido");
+            throw new GlobalException(INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
+        if (!Boolean.TRUE.equals(user.getActive())) {
+            activateAccount(origin, user);
+            throw new GlobalException("Usuário não ativado",  HttpStatus.FORBIDDEN);
+        }
 
         return AutoSignInDTOResponse.builder()
                 .token(jwtProvider.generateToken(user.getId()))
@@ -83,13 +96,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         Optional<User> exists = userRepository.findByUsernameOrEmail(authSignUpDTORequest.getUsername(), authSignUpDTORequest.getEmail());
 
         if (exists.isPresent()) {
-            throw new NotFoundException("Usuário ou email já cadastrado");
+            throw new BusinessExcepion("Usuário ou email já cadastrado");
         }
 
         Role userRole = roleRepository.findByName("USER")
                 .orElseThrow(() -> new NotFoundException("Role não encontrada"));
-
-
 
         User user = new User();
         user.setUsername(authSignUpDTORequest.getUsername());
@@ -97,23 +108,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         user.setEmail(authSignUpDTORequest.getEmail());
         user.setPassword(passwordEncoder.encode(authSignUpDTORequest.getPassword()));
         user.setActive(false);
-        user.setRoles(Collections.singletonList(userRole));
-
-
+        user.setRoles(new ArrayList<>(List.of(userRole)));
 
         userRepository.save(user);
 
-
         activateAccount(origin, user);
-
-
     }
 
     private void activateAccount(String origin, User user) {
         String subject = "Confirme seu e-mail para ativar sua conta";
         String token = UUID.randomUUID().toString();
 
-        String confirmationLink = origin + "/activate-account/" + token;
+        String confirmationLink = resolveBaseUrl(origin) + "/activate-account/" + token;
 
         String body = "Olá " + user.getUsername() + ",\n\n"
                 + "Obrigado por se registrar no nosso sistema! Para ativar sua conta, por favor, confirme seu e-mail clicando no link abaixo:\n\n"
@@ -122,61 +128,70 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 + "Atenciosamente,\n"
                 + "production-review";
 
-
-        userRecoveryCodeRepository.save(UserRecoveryCode.builder().email(user.getEmail()).code(token).build());
+        userActivationTokenRepository.save(UserActivationToken.builder().token(token).email(user.getEmail()).build());
 
         mailIntegration.send(user.getEmail(), body, subject);
     }
 
+    /**
+     * O header Origin é controlado pelo cliente; só o usamos no link do e-mail
+     * quando ele está na lista de origens permitidas.
+     */
+    private String resolveBaseUrl(String origin) {
+        if (origin != null && allowedOrigins.contains(origin)) {
+            return origin;
+        }
+        return frontendUrl;
+    }
+
     @Override
     public void sendRecoveryCode(ForgotPasswordRequest email) {
-        UserRecoveryCode userRecoveryCode;
-        String code = String.format("%04d", new Random().nextInt(10000));
-
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email.getEmail());
-
-        if (userRecoveryCodeOpt.isEmpty()) {
-            var userDetailOpt = userRepository.findByEmail(email.getEmail());
-
-            if (userDetailOpt.isEmpty()) {
-                throw new NotFoundException("Usuário não encontrado");
-            }
-
-            userRecoveryCode = new UserRecoveryCode();
-            userRecoveryCode.setEmail(email.getEmail());
-
-        } else {
-            userRecoveryCode = userRecoveryCodeOpt.get();
-
+        if (userRepository.findByEmail(email.getEmail()).isEmpty()) {
+            throw new NotFoundException("Usuário não encontrado");
         }
+
+        UserRecoveryCode userRecoveryCode = userRecoveryCodeRepository.findByEmail(email.getEmail())
+                .orElseGet(() -> UserRecoveryCode.builder().email(email.getEmail()).build());
+
+        String code = String.format("%06d", secureRandom.nextInt(1_000_000));
+
         userRecoveryCode.setCode(code);
         userRecoveryCode.setCreatedDate(LocalDateTime.now());
+        userRecoveryCode.setFailedAttempts(0);
+        userRecoveryCode.setTtl(recoveryCodeTimeoutMinutes * 60);
 
         userRecoveryCodeRepository.save(userRecoveryCode);
 
         mailIntegration.send(email.getEmail(), "Seu código de recuperação é: " + code, "Código de recuperação");
-
-
     }
 
 
     @Override
     public boolean recoveryCodeIsValid(String recoveryCode, String email) {
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByEmail(email);
+        UserRecoveryCode userRecoveryCode = userRecoveryCodeRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("Código de recuperação inválido"));
 
-        if (userRecoveryCodeOpt.isEmpty()) {
-            throw new NotFoundException("Código de recuperação inválido");
+        LocalDateTime createdDate = Objects.requireNonNullElse(userRecoveryCode.getCreatedDate(), LocalDateTime.MIN);
+        boolean expired = !LocalDateTime.now().isBefore(createdDate.plusMinutes(recoveryCodeTimeoutMinutes));
+
+        if (expired) {
+            userRecoveryCodeRepository.delete(userRecoveryCode);
+            return false;
         }
 
-        UserRecoveryCode userRecoveryCode = userRecoveryCodeOpt.get();
+        if (recoveryCode != null && recoveryCode.equals(userRecoveryCode.getCode())) {
+            return true;
+        }
 
-
-        LocalDateTime timeout = userRecoveryCode.getCreatedDate().plusMinutes(Long.parseLong(recoveryCodeTimeout));
-
-        LocalDateTime now = LocalDateTime.now();
-
-
-        return recoveryCode.equals(userRecoveryCode.getCode()) && now.isBefore(timeout);
+        // limita tentativas para impedir força bruta no código numérico
+        int attempts = Objects.requireNonNullElse(userRecoveryCode.getFailedAttempts(), 0) + 1;
+        if (attempts >= MAX_RECOVERY_CODE_ATTEMPTS) {
+            userRecoveryCodeRepository.delete(userRecoveryCode);
+        } else {
+            userRecoveryCode.setFailedAttempts(attempts);
+            userRecoveryCodeRepository.save(userRecoveryCode);
+        }
+        return false;
     }
 
     @Override
@@ -186,68 +201,44 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new BadRequestException("Código de recuperação inválido");
         }
 
-        Optional<User> userDetailOpt = userRepository.findByEmail(userDetailsDto.getEmail());
-
-
-        if (userDetailOpt.isEmpty()) {
-            throw new NotFoundException("Usuário não encontrado");
-        }
-
-        User userCredentials = userDetailOpt.get();
+        User userCredentials = userRepository.findByEmail(userDetailsDto.getEmail())
+                .orElseThrow(() -> new NotFoundException("Usuário não encontrado"));
 
         userCredentials.setPassword(passwordEncoder.encode(userDetailsDto.getPassword()));
 
-
         userRepository.save(userCredentials);
 
+        // o código só pode ser usado uma vez
+        userRecoveryCodeRepository.findByEmail(userDetailsDto.getEmail())
+                .ifPresent(userRecoveryCodeRepository::delete);
     }
 
     @Override
     public void activeUserByRecoveryCode(String recoveryCode) {
 
-        var userRecoveryCodeOpt = userRecoveryCodeRepository.findByCode(recoveryCode);
+        UserActivationToken activationToken = userActivationTokenRepository.findById(recoveryCode)
+                .orElseThrow(() -> new NotFoundException("Código de ativação inválido"));
 
-        if (userRecoveryCodeOpt.isEmpty()) {
-            throw new NotFoundException("Código de recuperação inválido");
-        }
-
-        UserRecoveryCode userRecoveryCode = userRecoveryCodeOpt.get();
-
-        Optional<User> userDetailOpt = userRepository.findByEmail(userRecoveryCode.getEmail());
-
-        if (userDetailOpt.isEmpty()) {
-            throw new NotFoundException("Usuário não encontrado");
-        }
-
-        User userCredentials = userDetailOpt.get();
+        User userCredentials = userRepository.findByEmail(activationToken.getEmail())
+                .orElseThrow(() -> new NotFoundException("Usuário não encontrado"));
 
         userCredentials.setActive(true);
 
         userRepository.save(userCredentials);
 
+        userActivationTokenRepository.delete(activationToken);
     }
 
     @Override
     public AutoSignInDTOResponse refreshToken(HttpServletRequest request) {
 
-
         var token = jwtProvider.getRefreshTokenFromCookie(request);
-        if (token == null) {
-            throw new BadRequestException("Token inválido");
+
+        Long idUser = jwtProvider.getUserIdFromRefreshToken(token);
+
+        if (idUser == null || userRepository.findById(idUser).isEmpty()) {
+            throw new GlobalException("Token inválido", HttpStatus.UNAUTHORIZED);
         }
-        
-        var jwt = jwtProvider.isValidRefreshToken(token);
-
-        if (!jwt) {
-            throw new BadRequestException("Token inválido");
-        }
-
-        var idUser = jwtProvider.getUserIdFromRefreshToken(token);
-
-
-       jwtProvider.cleanToken();
-       jwtProvider.cleanRefreshToken();
-
 
         return AutoSignInDTOResponse.builder()
                 .token(jwtProvider.generateToken(idUser))
@@ -257,16 +248,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     public Map<String, ResponseCookie> logout() {
-        var token =   jwtProvider.cleanToken();
-        var  refreshToken =  jwtProvider.cleanRefreshToken();
-
-        Map<String,
-                ResponseCookie> response = new HashMap<>();
-        response.put("token", token);
-        response.put("refreshToken", refreshToken);
-
+        Map<String, ResponseCookie> response = new HashMap<>();
+        response.put("token", jwtProvider.cleanToken());
+        response.put("refreshToken", jwtProvider.cleanRefreshToken());
         return response;
-
     }
 
 

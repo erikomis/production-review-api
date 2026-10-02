@@ -1,12 +1,13 @@
 package com.client.productionreview.model.redis;
 
-import jakarta.persistence.Id;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.TimeToLive;
 import org.springframework.data.redis.core.index.Indexed;
 
 import java.io.Serializable;
@@ -29,5 +30,13 @@ public class UserRecoveryCode  implements Serializable {
     @Indexed
     private String code;
 
+    @Builder.Default
     private LocalDateTime createdDate = LocalDateTime.now();
+
+    @Builder.Default
+    private Integer failedAttempts = 0;
+
+    /** Tempo de vida no Redis, em segundos. */
+    @TimeToLive
+    private Long ttl;
 }
