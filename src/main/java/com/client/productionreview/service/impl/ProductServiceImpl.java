@@ -4,6 +4,9 @@ import com.client.productionreview.dtos.product.ProductDetailDTO;
 import com.client.productionreview.dtos.product.ProductFilter;
 import com.client.productionreview.dtos.product.ProductImageSummaryDTO;
 import com.client.productionreview.dtos.product.ProductSortProperty;
+import com.client.productionreview.dtos.product.ProductSuggestionDTO;
+import com.client.productionreview.exception.BadRequestException;
+import com.client.productionreview.utils.TextNormalizer;
 import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.model.event.EventType;
@@ -26,6 +29,10 @@ import java.util.List;
 @Service
 public class ProductServiceImpl implements ProductService {
 
+    static final int SUGGEST_MIN_LENGTH = 2;
+
+    static final int SUGGEST_MAX_LIMIT = 10;
+
 
     private final ProductRepository productRepository;
 
@@ -45,7 +52,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @CacheEvict(value = "product", allEntries = true)
+    @CacheEvict(value = {"product", "seo"}, allEntries = true)
     public Product addProduct(Product product) {
 
         var existsCategorie = subCategorieRepository.findById(product.getSubCategorieId());
@@ -60,7 +67,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @CacheEvict(value = "product", allEntries = true)
+    @CacheEvict(value = {"product", "seo"}, allEntries = true)
     public Product updateProduct(Product product, Long id) {
         Product current = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
@@ -81,7 +88,7 @@ public class ProductServiceImpl implements ProductService {
         return saved;
     }
 
-    @CacheEvict(value = "product", allEntries = true)
+    @CacheEvict(value = {"product", "seo"}, allEntries = true)
     @Override
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
@@ -124,6 +131,18 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
 
         return ProductDetailDTO.from(summary, images);
+    }
+
+    @Override
+    public List<ProductSuggestionDTO> suggest(String q, int limit) {
+        String term = TextNormalizer.normalize(q);
+        if (term == null || term.length() < SUGGEST_MIN_LENGTH) {
+            throw new BadRequestException("q: informe pelo menos " + SUGGEST_MIN_LENGTH + " caracteres");
+        }
+        if (limit < 1 || limit > SUGGEST_MAX_LIMIT) {
+            throw new BadRequestException("limit: deve estar entre 1 e " + SUGGEST_MAX_LIMIT);
+        }
+        return productRepository.suggest(term, limit);
     }
 
     @Override

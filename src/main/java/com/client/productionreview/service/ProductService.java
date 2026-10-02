@@ -25,6 +25,9 @@ public interface ProductService {
 
         public ProductDetailDTO getProductDetailBySlug(String slug);
 
+        /** Autocompletar: {@code q} com pelo menos 2 caracteres (400 se menor); {@code limit} entre 1 e 10. */
+        public java.util.List<com.client.productionreview.dtos.product.ProductSuggestionDTO> suggest(String q, int limit);
+
         /** Página de produtos com nota média e total de reviews visíveis. */
         public Page<ProductSummaryDTO> listProducts(ProductFilter filter, Pageable pageable);
 }

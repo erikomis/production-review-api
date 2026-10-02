@@ -48,6 +48,16 @@ public class ProductControllerTest {
     @MockBean
     private ProductService productService;
 
+    // dependência nova do controller (seguir produto); no detalhe só repassa o DTO
+    @MockBean
+    private com.client.productionreview.service.ProductFollowService productFollowService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void passThroughFollowInfo() {
+        org.mockito.Mockito.when(productFollowService.withFollowInfo(org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+    }
+
     @SpyBean
     private ProductMapper productMapper;
 
@@ -198,5 +208,66 @@ public class ProductControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(productService).deleteProduct(1L);
+    }
+
+    // ---------- fase 3: autocompletar, seguir e campos do detalhe ----------
+
+    @Test
+    void suggest_returnsList() throws Exception {
+        when(productService.suggest("cafe", 5)).thenReturn(List.of(
+                new com.client.productionreview.dtos.product.ProductSuggestionDTO(1L, "Café Pilão", "cafe-pilao",
+                        "https://img/1.jpg", "Bebidas")));
+
+        mockMvc.perform(get("/api/v1/production/suggest").param("q", "cafe").param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].name").value("Café Pilão"))
+                .andExpect(jsonPath("$[0].slug").value("cafe-pilao"))
+                .andExpect(jsonPath("$[0].imageUrl").value("https://img/1.jpg"))
+                .andExpect(jsonPath("$[0].categoryName").value("Bebidas"));
+    }
+
+    @Test
+    void suggest_defaultLimitIs8_andShortTermIs400() throws Exception {
+        when(productService.suggest("ca", 8)).thenReturn(List.of());
+        when(productService.suggest("c", 8))
+                .thenThrow(new com.client.productionreview.exception.BadRequestException("q: informe pelo menos 2 caracteres"));
+
+        mockMvc.perform(get("/api/v1/production/suggest").param("q", "ca")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/production/suggest").param("q", "c"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("q: informe pelo menos 2 caracteres"));
+    }
+
+    @Test
+    void follow_andUnfollow() throws Exception {
+        when(productFollowService.follow(eq(3L), any())).thenReturn(new com.client.productionreview.dtos.product.FollowResponseDTO(true, 4));
+        when(productFollowService.unfollow(eq(3L), any())).thenReturn(new com.client.productionreview.dtos.product.FollowResponseDTO(false, 3));
+
+        mockMvc.perform(post("/api/v1/production/{id}/follow", 3L))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"following\":true,\"followersCount\":4}"));
+        mockMvc.perform(delete("/api/v1/production/{id}/follow", 3L))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"following\":false,\"followersCount\":3}"));
+    }
+
+    @Test
+    void detail_includesFollowInfo() throws Exception {
+        com.client.productionreview.dtos.product.ProductDetailDTO detail = new com.client.productionreview.dtos.product.ProductDetailDTO();
+        detail.setId(3L);
+        detail.setCreatedAt(java.time.Instant.parse("2026-10-01T23:14:44Z"));
+        when(productService.getProductDetail(3L)).thenReturn(detail);
+        when(productFollowService.withFollowInfo(detail)).thenAnswer(inv -> {
+            detail.setFollowersCount(4);
+            detail.setFollowedByMe(true);
+            return detail;
+        });
+
+        mockMvc.perform(get("/api/v1/production/{id}", 3L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.followersCount").value(4))
+                .andExpect(jsonPath("$.followedByMe").value(true))
+                .andExpect(jsonPath("$.createdAt").value("2026-10-01T23:14:44Z"));
     }
 }

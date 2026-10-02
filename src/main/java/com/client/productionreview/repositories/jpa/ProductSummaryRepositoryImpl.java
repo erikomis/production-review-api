@@ -2,6 +2,7 @@ package com.client.productionreview.repositories.jpa;
 
 import com.client.productionreview.dtos.product.ProductFilter;
 import com.client.productionreview.dtos.product.ProductSortProperty;
+import com.client.productionreview.dtos.product.ProductSuggestionDTO;
 import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.model.jpa.ProductImage;
 import com.client.productionreview.model.jpa.ReviewStatus;
@@ -59,6 +60,23 @@ public class ProductSummaryRepositoryImpl implements ProductSummaryRepository {
         }
 
         return new PageImpl<>(new ArrayList<>(content), pageable, count.getSingleResult());
+    }
+
+    @Override
+    public List<ProductSuggestionDTO> suggest(String normalizedTerm, int limit) {
+        String escaped = TextNormalizer.escapeLike(normalizedTerm);
+        List<ProductSuggestionDTO> content = entityManager.createQuery(
+                        "SELECT new com.client.productionreview.dtos.product.ProductSuggestionDTO(p.id, p.name, p.slug, c.name) "
+                                + FROM + "WHERE p.searchName LIKE :contains ESCAPE '!' "
+                                + "ORDER BY CASE WHEN p.searchName LIKE :prefix ESCAPE '!' THEN 0 ELSE 1 END, p.searchName, p.id",
+                        ProductSuggestionDTO.class)
+                .setParameter("contains", "%" + escaped + "%")
+                .setParameter("prefix", escaped + "%")
+                .setMaxResults(limit)
+                .getResultList();
+        Map<Long, String> images = firstImages(content.stream().map(ProductSuggestionDTO::getId).toList());
+        content.forEach(item -> item.setImageUrl(images.get(item.getId())));
+        return new ArrayList<>(content);
     }
 
     private String where(ProductFilter filter, Map<String, Object> params) {
@@ -120,13 +138,19 @@ public class ProductSummaryRepositoryImpl implements ProductSummaryRepository {
         if (content.isEmpty()) {
             return;
         }
-        List<Long> ids = content.stream().map(ProductSummaryDTO::getId).toList();
-        List<ProductImage> images = entityManager.createQuery(
-                        "SELECT i FROM ProductImage i WHERE i.productId IN :ids ORDER BY i.id", ProductImage.class)
-                .setParameter("ids", ids)
-                .getResultList();
-        Map<Long, String> firstImage = new HashMap<>();
-        images.forEach(image -> firstImage.putIfAbsent(image.getProductId(), image.getUrlImage()));
+        Map<Long, String> firstImage = firstImages(content.stream().map(ProductSummaryDTO::getId).toList());
         content.forEach(product -> product.setImageUrl(firstImage.get(product.getId())));
+    }
+
+    private Map<Long, String> firstImages(List<Long> ids) {
+        Map<Long, String> firstImage = new HashMap<>();
+        if (ids.isEmpty()) {
+            return firstImage;
+        }
+        entityManager.createQuery("SELECT i FROM ProductImage i WHERE i.productId IN :ids ORDER BY i.id", ProductImage.class)
+                .setParameter("ids", ids)
+                .getResultList()
+                .forEach(image -> firstImage.putIfAbsent(image.getProductId(), image.getUrlImage()));
+        return firstImage;
     }
 }

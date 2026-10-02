@@ -299,4 +299,24 @@ class ProductSummaryRepositoryTest {
         // idempotente
         assertEquals(0, new com.client.productionreview.config.SearchNameBackfill(productRepository).backfill());
     }
+
+    @Test
+    void suggest_prefixFirstThenContains_ignoringAccents() {
+        Product cafePilao = product("Café Pilão", "cafe-pilao", kitchen);
+        Product leiteComCafe = product("Leite com café", "leite-cafe", kitchen);
+        image(cafePilao, "https://img/pilao.jpg");
+
+        var suggestions = productRepository.suggest("cafe", 10);
+
+        // "Cafeteira" e "Café Pilão" começam com o termo; "Leite com café" só contém
+        assertEquals(java.util.List.of("Café Pilão", "Cafeteira", "Leite com café"),
+                suggestions.stream().map(com.client.productionreview.dtos.product.ProductSuggestionDTO::getName).toList());
+        assertEquals("https://img/pilao.jpg", suggestions.get(0).getImageUrl());
+        assertEquals("Casa", suggestions.get(0).getCategoryName());
+        assertEquals("cafe-pilao", suggestions.get(0).getSlug());
+        assertEquals(leiteComCafe.getId(), suggestions.get(2).getId());
+
+        assertEquals(2, productRepository.suggest("cafe", 2).size());
+        assertTrue(productRepository.suggest("xyz", 8).isEmpty());
+    }
 }
