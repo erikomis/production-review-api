@@ -92,6 +92,20 @@ class ReviewControllerTest {
     }
 
     @Test
+    void create_descriptionLongerThanColumn_shouldReturnBadRequest() throws Exception {
+        String longText = "a".repeat(256);
+
+        // a coluna description é CHAR(255); antes o texto chegava ao banco e falhava lá
+        mockMvc.perform(post("/api/v1/review/")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"Bom\",\"description\":\"" + longText + "\",\"note\":5,\"productId\":2}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("description: Description must have at most 255 characters"));
+
+        verifyNoInteractions(reviewService);
+    }
+
+    @Test
     void update_passesAuthenticatedUserNotReviewIdAsOwner() throws Exception {
         when(reviewService.updateReview(any(Review.class), eq(1L), eq(user))).thenReturn(review());
 
