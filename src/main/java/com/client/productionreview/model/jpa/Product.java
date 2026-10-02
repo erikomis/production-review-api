@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -36,7 +37,8 @@ public class Product implements Serializable {
     @Column(name = "sub_category_id")
     private Long subCategorieId;
 
-    @OneToMany(fetch = FetchType.LAZY)
+    @OneToMany(fetch = FetchType.EAGER)
+    @BatchSize(size = 50)
     @JoinColumn(name = "product_id", referencedColumnName = "id", insertable = false, updatable = false)
     private List<ProductImage> productImages;
 

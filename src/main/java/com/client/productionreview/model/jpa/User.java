@@ -8,14 +8,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.io.Serializable;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Entity
 @Table(name = "user")
@@ -43,6 +41,7 @@ public class User implements UserDetails, Serializable {
     @Column(name = "username", unique = true)
     private String username;
 
+    @ToString.Exclude
     private String password;
 
     @Column(name = "active")
@@ -59,45 +58,11 @@ public class User implements UserDetails, Serializable {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-//        return roles.stream()
-//                .map(role -> new SimpleGrantedAuthority(role.getName()))
-//                .collect(Collectors.toSet());
-
-//       authorities.addAll(roles.stream()
-//                .flatMap(role -> role.getPermissions().stream())
-//                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
-//                .collect(Collectors.toList());
-
-
-//        List<Role> aa = roles.stream().collect(Collectors.toList());
-//
-//        System.out.println("aa = " + aa);
-//        Set<GrantedAuthority> authorities = roles.stream()
-//                .map(role -> new SimpleGrantedAuthority("ROLE_"+role.getName()))
-//                .collect(Collectors.toSet());
-//
-//        authorities.addAll(roles.stream()
-//                .flatMap(role -> role.getPermissions().stream())
-//                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
-//                .collect(Collectors.toSet()));
-
-        //System.out.println("authorities = " + authorities + " roles = " + roles);
-        List<GrantedAuthority> authorities = roles.stream()
-                .flatMap(role -> {
-                    // Mapeia a role como uma autoridade
-                    Stream<GrantedAuthority> roleAuthority = Stream.of(new RoleGrantedAuthority(role));
-
-                    // Mapeia as permissões como autoridades
-                    Stream<GrantedAuthority> permissionAuthorities = role.getPermissions().stream()
-                            .map(permission -> new SimpleGrantedAuthority(permission.getName()));
-
-                    return roleAuthority;
-                })
-                .collect(Collectors.toList());
-       // System.out.println("authorities = " + authorities);
-        return authorities;
-
+        return roles.stream()
+                .map(role -> (GrantedAuthority) new RoleGrantedAuthority(role))
+                .toList();
     }
+
     @Override
     public boolean isAccountNonExpired() {
         return UserDetails.super.isAccountNonExpired();
