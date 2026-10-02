@@ -39,6 +39,8 @@ public class SecurityConfig {
             "/v2/api-docs/**",
             "/swagger-resources/**",
             "/actuator/**",
+            // sem isso, um 404 de usuário autenticado vira 401 ao ser encaminhado para /error
+            "/error",
             "/api/v1/auth/sign-up",
             "/api/v1/auth/sign-in",
             "/api/v1/auth/logout",
