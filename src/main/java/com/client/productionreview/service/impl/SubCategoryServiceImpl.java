@@ -64,18 +64,17 @@ public class SubCategoryServiceImpl implements SubCategoryService {
 
         Optional<SubCategory> existsName = getExistsSubCategoria(subCategorie);
 
-        if (existsName.isPresent()) {
+        if (existsName.isPresent() && !existsName.get().getId().equals(id)) {
             throw new BusinessExcepion("SubCategorie  exists already");
         }
 
-        SubCategory subCategory = new SubCategory();
-        subCategory.setId(id);
+        SubCategory subCategory = existsId.get();
         subCategory.setName(subCategorie.getName());
         subCategory.setDescription(subCategorie.getDescription());
+        subCategory.setSlug(subCategorie.getSlug());
         subCategory.setCategorieId(subCategorie.getCategorieId());
 
-
-        return subCategoryRepository.save(subCategorie);
+        return subCategoryRepository.save(subCategory);
     }
 
     @Override

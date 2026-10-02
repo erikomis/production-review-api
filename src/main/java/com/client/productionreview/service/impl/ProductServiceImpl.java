@@ -44,12 +44,10 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @CacheEvict(value = "product", allEntries = true, key = "#id")
+    @CacheEvict(value = "product", allEntries = true)
     public Product updateProduct(Product product, Long id) {
-        var existsProduct = productRepository.findById(id);
-        if (existsProduct.isEmpty()) {
-            throw new NotFoundException("Product not found");
-        }
+        Product current = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
         var existsCategorie = subCategorieRepository.findById(product.getSubCategorieId());
 
@@ -57,15 +55,21 @@ public class ProductServiceImpl implements ProductService {
             throw new NotFoundException("SubCategorie not exists");
         }
 
-        return productRepository.save(product);
+        current.setName(product.getName());
+        current.setDescription(product.getDescription());
+        current.setSlug(product.getSlug());
+        current.setSubCategorieId(product.getSubCategorieId());
+
+        return productRepository.save(current);
 
 
     }
 
-    @CacheEvict(value = "product", allEntries = true, key = "#id")
+    @CacheEvict(value = "product", allEntries = true)
     @Override
     public void deleteProduct(Long id) {
-        Product product = getProduct(id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
         productRepository.delete(product);
 
     }
@@ -86,48 +90,5 @@ public class ProductServiceImpl implements ProductService {
 
         return productRepository.findAllByProduct(search, pageable);
     }
-
-//
-//    private String storeFile(MultipartFile file, Long productId) {
-//        // Normalize file name
-//        String fileName = file.getOriginalFilename();
-//        if (fileName == null || fileName.contains("..")) {
-//            throw new RuntimeException("Sorry! Filename contains invalid path sequence " + fileName);
-//        }
-//
-//        try {
-//            // Cria o diretório usando o ID do produto e o nome do arquivo
-//            Path targetLocation = this.fileStorageLocation.resolve("product/" + productId + "/" + fileName);
-//
-//            Files.createDirectories(targetLocation.getParent());
-//
-//            // Copia o arquivo para o local de destino (substituindo o arquivo existente com o mesmo nome)
-//            Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
-//
-//            return "product/" + productId + "/" + fileName;
-//        } catch (IOException ex) {
-//            throw new IoFileException("Could not store file " + fileName + ". Please try again!");
-//        }
-//    }
-//
-//
-//    private void deleteFile(String fileName) {
-//        if (fileName == null || fileName.isEmpty()) {
-//            throw new NotFoundException("No file name provided.");
-//        }
-//
-//        Path targetLocation = fileStorageLocation.resolve(fileName);
-//
-//        try {
-//            if (Files.exists(targetLocation)) {
-//                Files.delete(targetLocation);
-//            } else {
-//                throw new RuntimeException("File not found: " + targetLocation);
-//            }
-//        } catch (IOException ex) {
-//            throw new IoFileException("Could not delete file " + fileName + ". Please try again!");
-//        }
-//    }
-
 
 }

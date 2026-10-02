@@ -2,7 +2,6 @@ package com.client.productionreview.dtos.subCategory;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +22,7 @@ public class SubCategoryRequestDTO {
     @NotBlank(message = "Slug is required")
     private String slug;
 
-    @NotBlank(message = "CategorieId is required")
-    @Pattern(regexp = "[\\s]*[0-9]*[1-9]+",message="Categoria tem que ser um número")
+    @NotNull(message = "CategorieId is required")
+    @Positive(message = "CategorieId must be positive")
     private Long categorieId;
 }

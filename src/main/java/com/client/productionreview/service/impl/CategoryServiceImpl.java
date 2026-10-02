@@ -9,7 +9,6 @@ import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.CategoryService;
 
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -43,39 +42,36 @@ public class CategoryServiceImpl implements CategoryService {
         return categoryRepository.save(category);
     }
 
+    // a lista de categorias fica no mesmo cache, então tudo é invalidado
     @Override
-    @CachePut(value = "category", key = "#id")
+    @CacheEvict(value = "category", allEntries = true)
     public Category updateCategory(Category category, Long id) {
-       Optional<Category> categoryExist = categoryRepository.findById(id);
-        if(categoryExist.isEmpty()){
-            throw new NotFoundException("Categorie not found");
-        }
+        Category current = categoryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Categorie not found"));
 
         Optional<Category> exists = categoryRepository.findByName(category.getName());
 
-        if(exists.isPresent()){
+        if(exists.isPresent() && !exists.get().getId().equals(id)){
             throw new BusinessExcepion("Categorie already exists");
         }
 
-        category.setId(id);
+        current.setName(category.getName());
+        current.setDescription(category.getDescription());
+        current.setSlug(category.getSlug());
 
-       return  categoryRepository.save(category);
+       return  categoryRepository.save(current);
     }
 
     @Override
-    @CacheEvict(value = "category", allEntries = true, key = "#id")
+    @CacheEvict(value = "category", allEntries = true)
     public void deleteCategory(Long id) {
 
-        var category = categoryRepository.findById(id);
-
-        var subCategories = subCategoryRepository.findByCategorieId(id);
-
-        if(subCategories.isPresent()){
-            throw new BusinessExcepion("Já existe subcategorias cadastradas para essa categoria sendo assim não é possivel deletar");
+        if(categoryRepository.findById(id).isEmpty()){
+            throw new NotFoundException("Categorie not found");
         }
 
-        if(category.isEmpty()){
-            throw new NotFoundException("Categorie not found");
+        if(subCategoryRepository.existsByCategorieId(id)){
+            throw new BusinessExcepion("Já existe subcategorias cadastradas para essa categoria sendo assim não é possivel deletar");
         }
 
         categoryRepository.deleteById(id);
@@ -85,14 +81,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Cacheable(value = "category", key = "#id")
     public Category getCategory(Long id) {
-        var category = categoryRepository.findById(id);
-
-        if(category.isEmpty()){
-            throw new NotFoundException("Categorie not found");
-        }
-
-        return category.get();
-
+        return categoryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Categorie not found"));
     }
 
     @Override

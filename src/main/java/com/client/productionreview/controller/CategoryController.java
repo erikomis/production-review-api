@@ -40,7 +40,7 @@ public class CategoryController {
     @PutMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@permissionChecker.hasRoleWithPermission(authentication, 'ADMIN', 'UPDATE_PRIVILEGES')")
-    public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @RequestBody CategoryRequestDTO categorioDto) {
+    public CategoryResponseDTO updateCatogory(@PathVariable("id") Long id, @Valid @RequestBody CategoryRequestDTO categorioDto) {
         Category model = categorieMapper.toModel(categorioDto);
         var categorieModel = categorieService.updateCategory(model, id);
         return  categorieMapper.toDTO(categorieModel);
