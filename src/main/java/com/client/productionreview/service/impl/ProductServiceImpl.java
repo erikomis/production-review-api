@@ -1,15 +1,26 @@
 package com.client.productionreview.service.impl;
 
+import com.client.productionreview.dtos.product.ProductDetailDTO;
+import com.client.productionreview.dtos.product.ProductFilter;
+import com.client.productionreview.dtos.product.ProductImageSummaryDTO;
+import com.client.productionreview.dtos.product.ProductSortProperty;
+import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.exception.NotFoundException;
+import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.Product;
+import com.client.productionreview.repositories.jpa.ProductImageRepository;
 import com.client.productionreview.repositories.jpa.ProductRepository;
 import com.client.productionreview.repositories.jpa.SubCategoryRepository;
+import com.client.productionreview.service.DomainEventPublisher;
 import com.client.productionreview.service.ProductService;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 
 @Service
@@ -20,12 +31,17 @@ public class ProductServiceImpl implements ProductService {
 
     private final SubCategoryRepository subCategorieRepository;
 
+    private final ProductImageRepository productImageRepository;
+
+    private final DomainEventPublisher eventPublisher;
 
 
-
-    public ProductServiceImpl(ProductRepository productRepository, SubCategoryRepository subCategorieRepository) {
+    public ProductServiceImpl(ProductRepository productRepository, SubCategoryRepository subCategorieRepository,
+                              ProductImageRepository productImageRepository, DomainEventPublisher eventPublisher) {
         this.productRepository = productRepository;
         this.subCategorieRepository = subCategorieRepository;
+        this.productImageRepository = productImageRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -38,9 +54,9 @@ public class ProductServiceImpl implements ProductService {
             throw new NotFoundException("SubCategorie not exists");
         }
 
-        return productRepository.save(product);
-
-
+        Product saved = productRepository.save(product);
+        eventPublisher.publish(EventType.PRODUCT_CREATED, saved.getId(), "Produto " + saved.getName() + " criado");
+        return saved;
     }
 
     @Override
@@ -60,9 +76,9 @@ public class ProductServiceImpl implements ProductService {
         current.setSlug(product.getSlug());
         current.setSubCategorieId(product.getSubCategorieId());
 
-        return productRepository.save(current);
-
-
+        Product saved = productRepository.save(current);
+        eventPublisher.publish(EventType.PRODUCT_UPDATED, saved.getId(), "Produto " + saved.getName() + " atualizado");
+        return saved;
     }
 
     @CacheEvict(value = "product", allEntries = true)
@@ -71,7 +87,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
         productRepository.delete(product);
-
+        eventPublisher.publish(EventType.PRODUCT_DELETED, id, "Produto " + product.getName() + " excluído");
     }
 
     @Override
@@ -87,14 +103,35 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Cacheable(value = "product")
-    public Page<Product> getAllProduct(Pageable pageable, String search) {
+    @Cacheable(value = "product", key = "'detail:' + #id")
+    public ProductDetailDTO getProductDetail(Long id) {
+        return detail(ProductFilter.byId(id));
+    }
 
-        if (search == null || search.isEmpty()) {
-            return productRepository.findAll(pageable);
-        }
+    @Override
+    @Cacheable(value = "product", key = "'detail-slug:' + #slug")
+    public ProductDetailDTO getProductDetailBySlug(String slug) {
+        return detail(ProductFilter.bySlug(slug));
+    }
 
-        return productRepository.findAllByProduct(search, pageable);
+    private ProductDetailDTO detail(ProductFilter filter) {
+        ProductSummaryDTO summary = productRepository.findSummaries(filter, PageRequest.of(0, 1))
+                .stream().findFirst()
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        List<ProductImageSummaryDTO> images = productImageRepository.findByProductIdOrderByIdAsc(summary.getId()).stream()
+                .map(image -> new ProductImageSummaryDTO(image.getId(), image.getUrlImage()))
+                .toList();
+
+        return ProductDetailDTO.from(summary, images);
+    }
+
+    @Override
+    @Cacheable(value = "product", key = "'list:' + #filter.toString() + ':' + #pageable.toString()")
+    public Page<ProductSummaryDTO> listProducts(ProductFilter filter, Pageable pageable) {
+        // valida antes de montar a consulta: propriedade desconhecida vira 400
+        pageable.getSort().forEach(order -> ProductSortProperty.from(order.getProperty()));
+        return productRepository.findSummaries(filter, pageable);
     }
 
 }
