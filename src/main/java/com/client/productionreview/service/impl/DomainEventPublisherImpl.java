@@ -2,6 +2,7 @@ package com.client.productionreview.service.impl;
 
 import com.client.productionreview.dtos.NotificationDto;
 import com.client.productionreview.message.producer.ProductionReviewApiProducer;
+import com.client.productionreview.metrics.BusinessMetrics;
 import com.client.productionreview.model.event.EventType;
 import com.client.productionreview.model.jpa.User;
 import com.client.productionreview.security.CurrentUser;
@@ -23,8 +24,11 @@ public class DomainEventPublisherImpl implements DomainEventPublisher {
 
     private final ProductionReviewApiProducer producer;
 
-    public DomainEventPublisherImpl(ProductionReviewApiProducer producer) {
+    private final BusinessMetrics metrics;
+
+    public DomainEventPublisherImpl(ProductionReviewApiProducer producer, BusinessMetrics metrics) {
         this.producer = producer;
+        this.metrics = metrics;
     }
 
     @Override
@@ -52,10 +56,12 @@ public class DomainEventPublisherImpl implements DomainEventPublisher {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
+                        metrics.domainEvent(type);
                         send(event);
                     }
                 });
             } else {
+                metrics.domainEvent(type);
                 send(event);
             }
             return event;

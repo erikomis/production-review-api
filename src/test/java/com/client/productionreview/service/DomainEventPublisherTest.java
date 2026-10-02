@@ -1,5 +1,8 @@
 package com.client.productionreview.service;
 
+import org.junit.jupiter.api.BeforeEach;
+import com.client.productionreview.metrics.BusinessMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.client.productionreview.dtos.NotificationDto;
 import com.client.productionreview.message.producer.ProductionReviewApiProducer;
 import com.client.productionreview.model.event.EventType;
@@ -9,7 +12,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,8 +31,43 @@ class DomainEventPublisherTest {
     @Mock
     private ProductionReviewApiProducer producer;
 
-    @InjectMocks
+    private SimpleMeterRegistry registry;
+
     private DomainEventPublisherImpl publisher;
+
+    @BeforeEach
+    void setUp() {
+        registry = new SimpleMeterRegistry();
+        publisher = new DomainEventPublisherImpl(producer, new BusinessMetrics(registry));
+    }
+
+    private double domainEvents(String type) {
+        var counter = registry.find("reviewstore.domain.events").tag("type", type).counter();
+        return counter == null ? 0 : counter.count();
+    }
+
+    @Test
+    void publish_countsBusinessEventByType() {
+        publisher.publish(EventType.REVIEW_CREATED, 1L, "a");
+        publisher.publish(EventType.REVIEW_CREATED, 2L, "b");
+        publisher.publish(EventType.CATEGORY_DELETED, 3L, "c");
+
+        assertEquals(2.0, domainEvents("REVIEW_CREATED"));
+        assertEquals(1.0, domainEvents("CATEGORY_DELETED"));
+        assertEquals("CATEGORY", registry.find("reviewstore.domain.events").tag("type", "CATEGORY_DELETED")
+                .counter().getId().getTag("entity"));
+    }
+
+    @Test
+    void publish_insideTransaction_countsOnlyAfterCommit() {
+        TransactionSynchronizationManager.initSynchronization();
+
+        publisher.publish(EventType.PRODUCT_CREATED, 1L, "Produto criado");
+        assertEquals(0.0, domainEvents("PRODUCT_CREATED"));
+
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        assertEquals(1.0, domainEvents("PRODUCT_CREATED"));
+    }
 
     @AfterEach
     void cleanUp() {
