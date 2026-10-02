@@ -4,13 +4,15 @@ package com.client.productionreview.security;
 import com.client.productionreview.exception.UnauthorizedHandler;
 import com.client.productionreview.provider.JwtProvider;
 import com.client.productionreview.repositories.jpa.UserRepository;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -36,33 +38,40 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/v2/api-docs/**",
             "/swagger-resources/**",
-            "/actuator/**"
+            "/actuator/**",
+            "/api/v1/auth/sign-up",
+            "/api/v1/auth/sign-in",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/refresh-token",
+            "/api/v1/auth/send-recovery-code/send",
+            "/api/v1/auth/recovery-code",
+            "/api/v1/auth/recovery-code/password",
+            "/api/v1/auth/activate/**"
+    };
+
+    private static final String[] PUBLIC_GET_LIST = {
+            "/api/v1/category/**",
+            "/api/v1/sub-categorie/**",
+            "/api/v1/production/**",
+            "/api/v1/review/**"
     };
 
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
+                // usa a configuração de CORS do WebMvcConfig, inclusive no preflight (OPTIONS)
+                .cors(Customizer.withDefaults())
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(e ->
                         e.authenticationEntryPoint(unauthorizedHandler)
                                 .accessDeniedHandler(accessDeniedHandler)
                 )
-                .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers(
-                                    "api/v1/category/list",
-                                    "api/v1/production/list",
-                                    "api/v1/sub-categorie/list",
-                                    "api/v1/production/list",
-                                    "api/v1/review/list",
-                                    "api/v1/auth/sign-up",
-                                    "api/v1/auth/sign-in",
-                                    "api/v1/auth/send-recovery-code/send",
-                                    "api/v1/auth/recovery-code/password",
-                                    "api/v1/auth/activate/**")
-                            .permitAll()
-                            .requestMatchers(PERMIT_ALL_LIST).permitAll();
-                    auth.anyRequest().authenticated();
-                }).addFilterBefore(new AuthenticationFilter(jwtProvider, userRepository), UsernamePasswordAuthenticationFilter.class);
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PERMIT_ALL_LIST).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_LIST).permitAll()
+                        .anyRequest().authenticated()
+                ).addFilterBefore(new AuthenticationFilter(jwtProvider, userRepository), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
