@@ -18,6 +18,7 @@ import com.client.productionreview.repositories.jpa.SubCategoryRepository;
 import com.client.productionreview.service.CatalogImportService;
 import com.client.productionreview.service.DomainEventPublisher;
 import com.client.productionreview.utils.SlugUtils;
+import com.client.productionreview.utils.TextNormalizer;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -233,6 +234,11 @@ public class CatalogImportServiceImpl implements CatalogImportService {
                 update(job, j -> j.setProductsSkipped(j.getProductsSkipped() + 1));
                 continue;
             }
+            // outro produto com o mesmo nome normalizado na subcategoria (ex.: outra embalagem): não cria
+            if (productRepository.existsBySubCategorieIdAndSearchName(subCategory.getId(), TextNormalizer.normalize(name))) {
+                update(job, j -> j.setProductsSkipped(j.getProductsSkipped() + 1));
+                continue;
+            }
 
             transactionTemplate.executeWithoutResult(status -> {
                 Product product = productRepository.save(Product.builder()
@@ -341,7 +347,7 @@ public class CatalogImportServiceImpl implements CatalogImportService {
         if (cacheManager == null) {
             return;
         }
-        for (String name : List.of("product", "category", "subCategory")) {
+        for (String name : List.of("product", "category", "subCategory", "seo")) {
             try {
                 Cache cache = cacheManager.getCache(name);
                 if (cache != null) {

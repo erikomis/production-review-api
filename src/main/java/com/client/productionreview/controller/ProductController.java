@@ -1,13 +1,17 @@
 package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ProductMapper;
+import com.client.productionreview.dtos.product.FollowResponseDTO;
 import com.client.productionreview.dtos.product.ProductDetailDTO;
+import com.client.productionreview.dtos.product.ProductSuggestionDTO;
 import com.client.productionreview.dtos.product.ProductFilter;
 import com.client.productionreview.dtos.product.ProductRequestDTO;
 import com.client.productionreview.dtos.product.ProductResponseDTO;
 import com.client.productionreview.dtos.product.ProductSortProperty;
 import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import com.client.productionreview.model.jpa.Product;
+import com.client.productionreview.model.jpa.User;
+import com.client.productionreview.service.ProductFollowService;
 import com.client.productionreview.service.ProductService;
 import com.client.productionreview.utils.PaginationUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,7 +22,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -30,10 +37,14 @@ public class ProductController {
 
     private final ProductMapper productMapper;
 
+    private final ProductFollowService productFollowService;
 
-    public ProductController(ProductService productService, ProductMapper productMapper) {
+
+    public ProductController(ProductService productService, ProductMapper productMapper,
+                             ProductFollowService productFollowService) {
         this.productService = productService;
         this.productMapper = productMapper;
+        this.productFollowService = productFollowService;
     }
 
     @PostMapping(
@@ -75,14 +86,33 @@ public class ProductController {
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
     public ProductDetailDTO getProduction(@PathVariable("id") Long id) {
-        return productService.getProductDetail(id);
+        return productFollowService.withFollowInfo(productService.getProductDetail(id));
+    }
+
+    /** Autocompletar da busca: sem acento/maiúsculas, nomes que começam com o termo primeiro. */
+    @GetMapping("/suggest")
+    public List<ProductSuggestionDTO> suggest(@RequestParam(value = "q", required = false) String q,
+                                              @RequestParam(value = "limit", required = false, defaultValue = "8") int limit) {
+        return productService.suggest(q, limit);
+    }
+
+    @PostMapping("/{id}/follow")
+    @SecurityRequirement(name = "jwt_auth")
+    public FollowResponseDTO follow(@PathVariable("id") Long id, @AuthenticationPrincipal User user) {
+        return productFollowService.follow(id, user);
+    }
+
+    @DeleteMapping("/{id}/follow")
+    @SecurityRequirement(name = "jwt_auth")
+    public FollowResponseDTO unfollow(@PathVariable("id") Long id, @AuthenticationPrincipal User user) {
+        return productFollowService.unfollow(id, user);
     }
 
 
     @GetMapping("/slug/{slug}")
     @ResponseStatus(HttpStatus.OK)
     public ProductDetailDTO getProductionBySlug(@PathVariable("slug") String slug) {
-        return productService.getProductDetailBySlug(slug);
+        return productFollowService.withFollowInfo(productService.getProductDetailBySlug(slug));
     }
 
 

@@ -1,8 +1,10 @@
 package com.client.productionreview.service.impl;
 
 import com.client.productionreview.exception.IoFileException;
+import com.client.productionreview.exception.NotFoundException;
 import com.client.productionreview.service.StorageService;
 import io.minio.*;
+import io.minio.errors.ErrorResponseException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -45,6 +47,27 @@ public class StorageServiceImpl implements StorageService {
         } catch (Exception e) {
             log.error("Erro ao remover arquivo {} do storage", objectName, e);
             throw new IoFileException("Erro ao remover arquivo do storage");
+        }
+    }
+
+    @Override
+    public StoredObject getFile(String bucketName, String objectName) {
+        try {
+            GetObjectResponse response = minioClient.getObject(
+                    GetObjectArgs.builder().bucket(bucketName).object(objectName).build());
+            String length = response.headers().get("Content-Length");
+            long size = length == null ? -1 : Long.parseLong(length);
+            return new StoredObject(response, size, response.headers().get("Content-Type"));
+        } catch (ErrorResponseException e) {
+            String code = e.errorResponse() == null ? null : e.errorResponse().code();
+            if ("NoSuchKey".equals(code) || "NoSuchBucket".equals(code) || "NoSuchObject".equals(code)) {
+                throw new NotFoundException("Arquivo não encontrado");
+            }
+            log.error("Erro ao ler arquivo {} do storage", objectName, e);
+            throw new IoFileException("Erro ao ler arquivo do storage");
+        } catch (Exception e) {
+            log.error("Erro ao ler arquivo {} do storage", objectName, e);
+            throw new IoFileException("Erro ao ler arquivo do storage");
         }
     }
 

@@ -20,7 +20,6 @@ import java.lang.reflect.Constructor;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 
@@ -57,10 +56,10 @@ class StatsServiceTest {
                 userRepository, clock);
     }
 
-    private ReviewRepository.CreatedNote created(LocalDateTime at, long note) {
+    private ReviewRepository.CreatedNote created(Instant at, long note) {
         return new ReviewRepository.CreatedNote() {
             @Override
-            public LocalDateTime getCreatedAt() {
+            public Instant getCreatedAt() {
                 return at;
             }
 
@@ -95,12 +94,12 @@ class StatsServiceTest {
         when(reviewRepository.countByStatus(ReviewStatus.HIDDEN)).thenReturn(1L);
         when(reviewRepository.averageNote(ReviewStatus.VISIBLE)).thenReturn(4.3333);
         when(reviewRepository.countByNote(ReviewStatus.VISIBLE)).thenReturn(List.of(noteCount(5, 2), noteCount(3, 1)));
-        when(reviewRepository.findCreatedSince(eq(ReviewStatus.VISIBLE), eq(LocalDate.of(2026, 9, 26).atStartOfDay())))
-                .thenReturn(List.of(created(LocalDateTime.of(2026, 10, 2, 9, 0), 5),
-                        created(LocalDateTime.of(2026, 10, 2, 10, 0), 4),
-                        created(LocalDateTime.of(2026, 9, 28, 10, 0), 3)));
-        when(userRepository.findCreatedSince(LocalDate.of(2026, 9, 26).atStartOfDay()))
-                .thenReturn(List.of(LocalDateTime.of(2026, 9, 26, 8, 0)));
+        when(reviewRepository.findCreatedSince(eq(ReviewStatus.VISIBLE), eq(LocalDate.of(2026, 9, 26).atStartOfDay(ZONE).toInstant())))
+                .thenReturn(List.of(created(Instant.parse("2026-10-02T12:00:00Z"), 5),
+                        created(Instant.parse("2026-10-02T13:00:00Z"), 4),
+                        created(Instant.parse("2026-09-28T13:00:00Z"), 3)));
+        when(userRepository.findCreatedSince(LocalDate.of(2026, 9, 26).atStartOfDay(ZONE).toInstant()))
+                .thenReturn(List.of(Instant.parse("2026-09-26T11:00:00Z")));
         when(reviewRepository.topProducts(eq(ReviewStatus.VISIBLE), any()))
                 .thenReturn(List.of(new TopProductDTO(1L, "Smartphone X", "smartphone-x", 2L, 4.0)));
         when(reviewRepository.topCategories(eq(ReviewStatus.VISIBLE), any())).thenReturn(List.of());
@@ -141,6 +140,19 @@ class StatsServiceTest {
         assertNull(stats.getAverageNote());
         assertEquals(30, stats.getReviewsPerDay().size());
         assertTrue(stats.getRatingDistribution().values().stream().allMatch(v -> v == 0L));
+    }
+
+    @Test
+    void stats_groupsDaysInSaoPauloTimezone() {
+        // 02:30 UTC de 02/10 ainda é 01/10 (23:30) em São Paulo
+        when(reviewRepository.findCreatedSince(eq(ReviewStatus.VISIBLE), any()))
+                .thenReturn(List.of(created(Instant.parse("2026-10-02T02:30:00Z"), 5)));
+
+        StatsDTO stats = service.getStats(7);
+
+        assertEquals(LocalDate.of(2026, 10, 1), stats.getReviewsPerDay().get(5).getDate());
+        assertEquals(1, stats.getReviewsPerDay().get(5).getCount());
+        assertEquals(0, stats.getReviewsPerDay().get(6).getCount());
     }
 
     @Test

@@ -55,6 +55,12 @@ class ReviewControllerTest {
     @MockBean
     private ReviewService reviewService;
 
+    @MockBean
+    private com.client.productionreview.service.ReviewImageService reviewImageService;
+
+    @MockBean
+    private com.client.productionreview.service.ReviewReportService reviewReportService;
+
     private final User user = User.builder().id(10L).name("John").build();
 
     @BeforeEach
@@ -266,5 +272,111 @@ class ReviewControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalReviews").value(3))
                 .andExpect(jsonPath("$.averageNote").value(4.3));
+    }
+
+    // ---------- fase 3: fotos, denúncia e campos novos ----------
+
+    @Test
+    void addImage_returns201WithRelativeUrl() throws Exception {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "foto.jpg", "image/jpeg", new byte[]{1, 2});
+        when(reviewImageService.addImage(eq(12L), any(), eq(user)))
+                .thenReturn(new com.client.productionreview.dtos.review.ReviewImageDTO(7L, "/api/v1/files/reviews/12/u.jpg"));
+
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 12L).file(file))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(7))
+                .andExpect(jsonPath("$.url").value("/api/v1/files/reviews/12/u.jpg"));
+    }
+
+    @Test
+    void addImage_errorsFromService() throws Exception {
+        var file = new org.springframework.mock.web.MockMultipartFile("file", "foto.gif", "image/gif", new byte[]{1});
+        when(reviewImageService.addImage(eq(12L), any(), any()))
+                .thenThrow(new com.client.productionreview.exception.BadRequestException("Limite de 3 fotos por avaliação"))
+                .thenThrow(new com.client.productionreview.exception.GlobalException("Só o autor pode adicionar fotos à avaliação",
+                        org.springframework.http.HttpStatus.FORBIDDEN));
+
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 12L).file(file))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Limite de 3 fotos por avaliação"));
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 12L).file(file))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void addImage_withoutFile_returns400() throws Exception {
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 12L))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(reviewImageService);
+    }
+
+    @Test
+    void deleteImage_returns204() throws Exception {
+        mockMvc.perform(delete("/api/v1/review/{id}/images/{imageId}", 12L, 7L))
+                .andExpect(status().isNoContent());
+
+        verify(reviewImageService).deleteImage(12L, 7L, user);
+    }
+
+    @Test
+    void report_returns201() throws Exception {
+        when(reviewReportService.report(eq(12L), any(), eq(user))).thenReturn(
+                com.client.productionreview.dtos.review.ReviewReportDTO.builder().id(5L)
+                        .reason(com.client.productionreview.model.jpa.ReportReason.SPAM).reporterName("John")
+                        .createdAt(java.time.Instant.parse("2026-10-02T02:14:49Z")).build());
+
+        mockMvc.perform(post("/api/v1/review/{id}/report", 12L).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"SPAM\",\"details\":\"link suspeito\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(5))
+                .andExpect(jsonPath("$.reason").value("SPAM"))
+                .andExpect(jsonPath("$.createdAt").value("2026-10-02T02:14:49Z"));
+    }
+
+    @Test
+    void report_validation() throws Exception {
+        mockMvc.perform(post("/api/v1/review/{id}/report", 12L).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("reason: O motivo é obrigatório"));
+        mockMvc.perform(post("/api/v1/review/{id}/report", 12L).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"SPAM\",\"details\":\"" + "x".repeat(501) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("details: Os detalhes devem ter no máximo 500 caracteres"));
+        mockMvc.perform(post("/api/v1/review/{id}/report", 12L).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"CHATO\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(reviewReportService);
+    }
+
+    @Test
+    void report_conflict_returns409() throws Exception {
+        when(reviewReportService.report(eq(12L), any(), any()))
+                .thenThrow(new com.client.productionreview.exception.BusinessExcepion("Você já denunciou esta avaliação"));
+
+        mockMvc.perform(post("/api/v1/review/{id}/report", 12L).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OTHER\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Você já denunciou esta avaliação"));
+    }
+
+    @Test
+    void reviewResponse_hasPhase3FieldsAndUtcDates() throws Exception {
+        ReviewResponseDTO dto = ReviewResponseDTO.builder().id(12L).userUsername("john").reportedByMe(true)
+                .createdAt(java.time.Instant.parse("2026-10-02T02:14:49.987Z"))
+                .images(List.of(new com.client.productionreview.dtos.review.ReviewImageDTO(7L, "/api/v1/files/reviews/12/u.jpg")))
+                .reply(new com.client.productionreview.dtos.review.ReviewReplyDTO("Obrigado", "Equipe",
+                        java.time.Instant.parse("2026-10-02T03:00:00Z")))
+                .build();
+        when(reviewService.getReviewDetails(12L)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/v1/review/{id}", 12L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.createdAt").value("2026-10-02T02:14:49Z"))
+                .andExpect(jsonPath("$.userUsername").value("john"))
+                .andExpect(jsonPath("$.reportedByMe").value(true))
+                .andExpect(jsonPath("$.images[0].url").value("/api/v1/files/reviews/12/u.jpg"))
+                .andExpect(jsonPath("$.reply.text").value("Obrigado"))
+                .andExpect(jsonPath("$.reply.authorName").value("Equipe"))
+                .andExpect(jsonPath("$.reply.repliedAt").value("2026-10-02T03:00:00Z"));
     }
 }

@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +22,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
             + "WHERE r.productId = :productId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
     RatingSummary getRatingSummary(@Param("productId") Long productId);
 
+    @Query("SELECT COUNT(r) AS totalReviews, AVG(r.note) AS averageNote FROM Review r "
+            + "WHERE r.userId = :userId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
+    RatingSummary getUserRatingSummary(@Param("userId") Long userId);
+
+    /** Marcações de "útil" recebidas nas reviews visíveis do usuário. */
+    @Query("SELECT COUNT(h) FROM ReviewHelpful h JOIN Review r ON r.id = h.reviewId "
+            + "WHERE r.userId = :userId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE")
+    long countHelpfulReceived(@Param("userId") Long userId);
+
     @Query("SELECT r.note AS note, COUNT(r) AS total FROM Review r "
             + "WHERE r.productId = :productId AND r.status = com.client.productionreview.model.jpa.ReviewStatus.VISIBLE "
             + "GROUP BY r.note")
@@ -32,12 +41,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
 
     long countByStatus(ReviewStatus status);
 
+    boolean existsByProductId(Long productId);
+
     @Query("SELECT AVG(r.note) FROM Review r WHERE r.status = :status")
     Double averageNote(@Param("status") ReviewStatus status);
 
     @Query("SELECT r.createdAt AS createdAt, r.note AS note FROM Review r "
             + "WHERE r.status = :status AND r.createdAt >= :from")
-    List<CreatedNote> findCreatedSince(@Param("status") ReviewStatus status, @Param("from") LocalDateTime from);
+    List<CreatedNote> findCreatedSince(@Param("status") ReviewStatus status, @Param("from") Instant from);
 
     @Query("SELECT new com.client.productionreview.dtos.admin.TopProductDTO(p.id, p.name, p.slug, COUNT(r), AVG(r.note)) "
             + "FROM Review r JOIN Product p ON p.id = r.productId WHERE r.status = :status "
@@ -66,7 +77,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, ReviewQue
     }
 
     interface CreatedNote {
-        LocalDateTime getCreatedAt();
+        Instant getCreatedAt();
 
         Long getNote();
     }

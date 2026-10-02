@@ -21,7 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +42,10 @@ class AdminUserControllerTest {
     @MockBean
     private AdminUserService adminUserService;
 
+    // dependência nova do controller (exportação CSV)
+    @MockBean
+    private com.client.productionreview.service.AdminExportService adminExportService;
+
     private final User admin = User.builder().id(1L).name("Administrador").build();
 
     @BeforeEach
@@ -56,7 +60,7 @@ class AdminUserControllerTest {
 
     private AdminUserDTO maria() {
         return AdminUserDTO.builder().id(2L).name("Maria").username("maria").email("maria@mail.com").active(true)
-                .roles(List.of("USER")).createdAt(LocalDateTime.of(2026, 10, 1, 10, 0)).reviewsCount(3).build();
+                .roles(List.of("USER")).createdAt(Instant.parse("2026-10-01T10:00:00.123456Z")).reviewsCount(3).build();
     }
 
     @Test
@@ -71,7 +75,7 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.content[0].email").value("maria@mail.com"))
                 .andExpect(jsonPath("$.content[0].active").value(true))
                 .andExpect(jsonPath("$.content[0].roles[0]").value("USER"))
-                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-01T10:00:00"))
+                .andExpect(jsonPath("$.content[0].createdAt").value("2026-10-01T10:00:00Z"))
                 .andExpect(jsonPath("$.content[0].reviewsCount").value(3))
                 .andExpect(jsonPath("$.content[0].password").doesNotExist());
 
@@ -105,5 +109,17 @@ class AdminUserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("active: Active is required"));
+    }
+
+    @Test
+    void exportCsv_returnsAttachment() throws Exception {
+        byte[] csv = com.client.productionreview.utils.CsvWriter.write(List.of("ID"), List.of(List.of(2L)));
+        when(adminExportService.usersCsv("mar", "USER", true)).thenReturn(csv);
+
+        mockMvc.perform(get("/api/v1/admin/users/export.csv").param("search", "mar").param("role", "USER").param("active", "true"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("attachment; filename=\"usuarios-")))
+                .andExpect(content().bytes(csv));
     }
 }

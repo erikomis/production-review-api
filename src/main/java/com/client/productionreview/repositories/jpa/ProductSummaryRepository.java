@@ -1,6 +1,7 @@
 package com.client.productionreview.repositories.jpa;
 
 import com.client.productionreview.dtos.product.ProductFilter;
+import com.client.productionreview.dtos.product.ProductSuggestionDTO;
 import com.client.productionreview.dtos.product.ProductSummaryDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,4 +14,10 @@ public interface ProductSummaryRepository {
      * Sem ordenação, usa o id. averageNote desempata por totalReviews DESC; produtos sem nota vão para o fim.
      */
     Page<ProductSummaryDTO> findSummaries(ProductFilter filter, Pageable pageable);
+
+    /**
+     * Autocompletar: {@code normalizedTerm} já normalizado (minúsculas, sem acento). Nomes que começam
+     * com o termo vêm primeiro, depois os que o contêm; em cada grupo, ordem alfabética.
+     */
+    java.util.List<ProductSuggestionDTO> suggest(String normalizedTerm, int limit);
 }

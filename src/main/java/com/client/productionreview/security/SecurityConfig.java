@@ -1,13 +1,21 @@
 package com.client.productionreview.security;
 
 
+import com.client.productionreview.exception.ErrorResponses;
 import com.client.productionreview.exception.UnauthorizedHandler;
+import com.client.productionreview.metrics.BusinessMetrics;
 import com.client.productionreview.provider.JwtProvider;
 import com.client.productionreview.repositories.jpa.UserRepository;
-import lombok.AllArgsConstructor;
+import com.client.productionreview.security.ratelimit.RateLimitFilter;
+import com.client.productionreview.security.ratelimit.RateLimitProperties;
+import com.client.productionreview.security.ratelimit.RateLimitStore;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,10 +26,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.filter.CorsFilter;
+
+import java.util.List;
 
 @Configuration
 @EnableMethodSecurity
-@AllArgsConstructor
+@EnableConfigurationProperties(RateLimitProperties.class)
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
@@ -29,6 +40,24 @@ public class SecurityConfig {
     private final UserRepository userRepository;
     private final UnauthorizedHandler unauthorizedHandler;
     private final AccessDeniedHandler accessDeniedHandler;
+    private final RateLimitStore rateLimitStore;
+    private final RateLimitProperties rateLimitProperties;
+    private final BusinessMetrics businessMetrics;
+    private final List<String> allowedOrigins;
+
+    public SecurityConfig(JwtProvider jwtProvider, UserRepository userRepository, UnauthorizedHandler unauthorizedHandler,
+                          AccessDeniedHandler accessDeniedHandler, RateLimitStore rateLimitStore,
+                          RateLimitProperties rateLimitProperties, BusinessMetrics businessMetrics,
+                          @Value("${app.allowed-origins}") List<String> allowedOrigins) {
+        this.jwtProvider = jwtProvider;
+        this.userRepository = userRepository;
+        this.unauthorizedHandler = unauthorizedHandler;
+        this.accessDeniedHandler = accessDeniedHandler;
+        this.rateLimitStore = rateLimitStore;
+        this.rateLimitProperties = rateLimitProperties;
+        this.businessMetrics = businessMetrics;
+        this.allowedOrigins = allowedOrigins;
+    }
 
 
     private static final String[] PERMIT_ALL_LIST = {
@@ -55,7 +84,10 @@ public class SecurityConfig {
             "/api/v1/category/**",
             "/api/v1/sub-categorie/**",
             "/api/v1/production/**",
-            "/api/v1/review/**"
+            "/api/v1/review/**",
+            "/api/v1/files/**",
+            "/api/v1/seo/**",
+            "/api/v1/users/**"
     };
 
 
@@ -77,10 +109,22 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/review/me").authenticated()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_LIST).permitAll()
                         .anyRequest().authenticated()
-                ).addFilterBefore(new AuthenticationFilter(jwtProvider, userRepository), UsernamePasswordAuthenticationFilter.class);
+                )
+                // antes do CORS: a recusa sai no formato de erro da API, não como "Invalid CORS request"
+                .addFilterBefore(new OriginCheckFilter(allowedOrigins), CorsFilter.class)
+                .addFilterBefore(new AuthenticationFilter(jwtProvider, userRepository), UsernamePasswordAuthenticationFilter.class)
+                // depois da autenticação: algumas regras contam por usuário
+                .addFilterAfter(new RateLimitFilter(rateLimitStore, rateLimitProperties, businessMetrics), AuthenticationFilter.class);
         return http.build();
     }
 
+
+    /** URLs recusadas pelo firewall (ex.: {@code %2e%2e}, {@code //}) também saem no formato de erro da API. */
+    @Bean
+    public RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, exception) ->
+                ErrorResponses.write(response, HttpStatus.BAD_REQUEST, "Requisição inválida");
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

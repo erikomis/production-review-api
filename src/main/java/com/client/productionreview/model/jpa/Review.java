@@ -9,7 +9,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -52,18 +52,28 @@ public class Review implements Serializable {
     private String moderationReason;
 
     @Column(name = "moderated_at")
-    private LocalDateTime moderatedAt;
+    private Instant moderatedAt;
 
     @Column(name = "moderated_by")
     private Long moderatedBy;
 
+    /** Resposta oficial da equipe (uma por review). */
+    @Column(name = "reply_text", length = 1000)
+    private String replyText;
+
+    @Column(name = "reply_author_id")
+    private Long replyAuthorId;
+
+    @Column(name = "replied_at")
+    private Instant repliedAt;
+
     @CreationTimestamp
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at")
     @UpdateTimestamp
-    private  LocalDateTime updatedAt;
+    private  Instant updatedAt;
 
     @PrePersist
     void defaultStatus() {

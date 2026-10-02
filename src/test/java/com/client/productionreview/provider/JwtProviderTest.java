@@ -110,4 +110,20 @@ class JwtProviderTest {
         assertEquals(0, jwtProvider.cleanToken().getMaxAge().getSeconds());
         assertEquals(0, jwtProvider.cleanRefreshToken().getMaxAge().getSeconds());
     }
+
+    @Test
+    void cookies_useConfiguredSameSiteAndSecure() {
+        var cookie = jwtProvider.generateToken(1L);
+        assertEquals("Lax", cookie.getSameSite());
+        assertTrue(cookie.isSecure());
+
+        ReflectionTestUtils.setField(jwtProvider, "sameSite", "Strict");
+        ReflectionTestUtils.setField(jwtProvider, "secureCookie", false);
+
+        var custom = jwtProvider.generateRefreshToken(1L);
+        assertEquals("Strict", custom.getSameSite());
+        assertFalse(custom.isSecure());
+        assertTrue(custom.toString().contains("SameSite=Strict"));
+        assertEquals("Strict", jwtProvider.cleanRefreshToken().getSameSite());
+    }
 }

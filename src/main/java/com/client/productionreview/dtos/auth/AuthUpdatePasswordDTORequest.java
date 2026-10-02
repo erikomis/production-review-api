@@ -2,7 +2,8 @@ package com.client.productionreview.dtos.auth;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -15,8 +16,8 @@ public class AuthUpdatePasswordDTORequest {
     @NotBlank(message = "Atributo email é obrigatório")
     private String email;
 
-    @NotBlank(message = "Atributo password é obrigatório")
-    @Size(min = 3 , max = 20, message = "A senha deve ter entre 3 e 20 caracteres")
+    @NotNull(message = "Atributo password é obrigatório")
+    @Pattern(regexp = PasswordPolicy.REGEX, message = PasswordPolicy.MESSAGE)
     private String password;
 
     @NotBlank(message = "Atributo recoveryCode é obrigatório")

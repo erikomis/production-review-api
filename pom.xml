@@ -150,6 +150,14 @@
             </plugin>
 
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- testes no mesmo fuso da aplicação (UTC); @{argLine} preserva o agente do JaCoCo -->
+                    <argLine>@{argLine} -Duser.timezone=UTC</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
                 <version>3.10.0.2594</version>

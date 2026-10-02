@@ -2,10 +2,15 @@ package com.client.productionreview.controller;
 
 import com.client.productionreview.controller.mapper.ReviewMapper;
 import com.client.productionreview.dtos.review.HelpfulResponseDTO;
+import com.client.productionreview.dtos.review.ReviewImageDTO;
+import com.client.productionreview.dtos.review.ReviewReportDTO;
+import com.client.productionreview.dtos.review.ReviewReportRequestDTO;
 import com.client.productionreview.dtos.review.ReviewRequestDTO;
 import com.client.productionreview.dtos.review.ReviewResponseDTO;
 import com.client.productionreview.dtos.review.ReviewSummaryDTO;
 import com.client.productionreview.model.jpa.User;
+import com.client.productionreview.service.ReviewImageService;
+import com.client.productionreview.service.ReviewReportService;
 import com.client.productionreview.service.ReviewService;
 import com.client.productionreview.utils.PaginationUtils;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -15,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 
 @RestController
@@ -25,9 +31,16 @@ public class ReviewController {
 
     private final ReviewMapper reviewMapper;
 
-    ReviewController(ReviewService reviewService, ReviewMapper reviewMapper) {
+    private final ReviewImageService reviewImageService;
+
+    private final ReviewReportService reviewReportService;
+
+    ReviewController(ReviewService reviewService, ReviewMapper reviewMapper, ReviewImageService reviewImageService,
+                     ReviewReportService reviewReportService) {
         this.reviewService = reviewService;
         this.reviewMapper = reviewMapper;
+        this.reviewImageService = reviewImageService;
+        this.reviewReportService = reviewReportService;
     }
 
 
@@ -74,6 +87,30 @@ public class ReviewController {
         return reviewService.toggleHelpful(id, user);
     }
 
+
+    @PostMapping("/{id}/images")
+    @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "jwt_auth")
+    public ReviewImageDTO addImage(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file,
+                                   @AuthenticationPrincipal User user) {
+        return reviewImageService.addImage(id, file, user);
+    }
+
+    @DeleteMapping("/{id}/images/{imageId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @SecurityRequirement(name = "jwt_auth")
+    public void deleteImage(@PathVariable("id") Long id, @PathVariable("imageId") Long imageId,
+                            @AuthenticationPrincipal User user) {
+        reviewImageService.deleteImage(id, imageId, user);
+    }
+
+    @PostMapping("/{id}/report")
+    @ResponseStatus(HttpStatus.CREATED)
+    @SecurityRequirement(name = "jwt_auth")
+    public ReviewReportDTO report(@PathVariable("id") Long id, @Valid @RequestBody ReviewReportRequestDTO request,
+                                  @AuthenticationPrincipal User user) {
+        return reviewReportService.report(id, request, user);
+    }
 
     @GetMapping("/list")
     public Page<ReviewResponseDTO> getReviews(@RequestParam(value = "page", required = false) Integer page,

@@ -34,6 +34,17 @@ public enum EventType {
     REVIEW_DELETED(EntityType.REVIEW, "Avaliação excluída"),
     REVIEW_HIDDEN(EntityType.REVIEW, "Avaliação ocultada"),
     REVIEW_RESTORED(EntityType.REVIEW, "Avaliação restaurada"),
+    REVIEW_REPORTED(EntityType.REVIEW, "Avaliação denunciada"),
+    REVIEW_REPORTS_DISMISSED(EntityType.REVIEW, "Denúncias descartadas"),
+    REVIEW_REPLIED(EntityType.REVIEW, "Avaliação respondida"),
+    REVIEW_REPLY_DELETED(EntityType.REVIEW, "Resposta oficial removida"),
+    REVIEW_IMAGE_ADDED(EntityType.REVIEW, "Foto adicionada à avaliação"),
+    REVIEW_IMAGE_REMOVED(EntityType.REVIEW, "Foto removida da avaliação"),
+    REVIEWS_BULK_MODERATED(EntityType.REVIEW, "Moderação em lote"),
+
+    PRODUCT_FOLLOWED(EntityType.PRODUCT, "Produto seguido"),
+    PRODUCT_UNFOLLOWED(EntityType.PRODUCT, "Produto deixou de ser seguido"),
+    CATALOG_DEDUPLICATED(EntityType.PRODUCT, "Produtos duplicados removidos"),
 
     CATALOG_IMPORT_STARTED(EntityType.IMPORT, "Importação de catálogo iniciada"),
     CATALOG_IMPORT_COMPLETED(EntityType.IMPORT, "Importação de catálogo concluída"),

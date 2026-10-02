@@ -84,6 +84,10 @@ class SecurityIntegrationTest {
     @MockBean
     private UserDetailsService userDetailsService;
 
+    // usa o cache Redis (indisponível nos testes)
+    @MockBean
+    private com.client.productionreview.service.SeoService seoService;
+
     private User admin;
     private User commonUser;
 
@@ -237,6 +241,17 @@ class SecurityIntegrationTest {
     // ---------- CORS ----------
 
     @Test
+    void corsResponse_exposesRetryAfterAndContentDisposition() throws Exception {
+        // sem o expose, o navegador não deixa o front ler o tempo de espera do 429 nem o nome do CSV
+        mockMvc.perform(get("/api/v1/category/list").header(HttpHeaders.ORIGIN, "http://localhost:5173"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS,
+                        org.hamcrest.Matchers.allOf(
+                                org.hamcrest.Matchers.containsString("Retry-After"),
+                                org.hamcrest.Matchers.containsString("Content-Disposition"))));
+    }
+
+    @Test
     void preflight_onProtectedRoute_fromAllowedOrigin_isAccepted() throws Exception {
         mockMvc.perform(options("/api/v1/category/")
                         .header(HttpHeaders.ORIGIN, "http://localhost:5173")
@@ -331,5 +346,124 @@ class SecurityIntegrationTest {
 
         // desativado por um admin: o token emitido antes deixa de valer
         mockMvc.perform(get("/api/v1/user/me").cookie(cookie)).andExpect(status().isUnauthorized());
+    }
+
+    // ---------- fase 3: Origin e cookies ----------
+
+    @Test
+    void post_fromUnknownOrigin_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .header(HttpHeaders.ORIGIN, "https://evil.example.com")
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Origem não permitida"))
+                .andExpect(jsonPath("$.httpStatus").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.statusCode").value(403));
+        mockMvc.perform(post("/api/v1/auth/sign-in").header(HttpHeaders.REFERER, "https://evil.example.com/x")
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"a\",\"password\":\"b\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void post_fromAllowedOrigin_orWithoutOrigin_passes() throws Exception {
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/v1/category/").cookie(accessCookie(admin))
+                        .contentType(MediaType.APPLICATION_JSON).content(CATEGORY_JSON))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void get_withoutOrigin_orFromOtherOrigin_passes() throws Exception {
+        mockMvc.perform(get("/api/v1/category/list")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/category/list").header(HttpHeaders.ORIGIN, "https://evil.example.com"))
+                .andExpect(status().isForbidden()); // recusado pelo CORS, não pelo filtro de Origin
+    }
+
+    @Test
+    void sessionCookies_haveSameSiteSecureAndHttpOnly() {
+        String token = jwtProvider.generateToken(admin.getId()).toString();
+        String refresh = jwtProvider.generateRefreshToken(admin.getId()).toString();
+        String cleared = jwtProvider.cleanToken().toString();
+
+        for (String cookie : java.util.List.of(token, refresh, cleared)) {
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("SameSite=Lax"), cookie);
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("Secure"), cookie);
+            org.junit.jupiter.api.Assertions.assertTrue(cookie.contains("HttpOnly"), cookie);
+        }
+    }
+
+    // ---------- fase 3: rotas novas ----------
+
+    @Test
+    void phase3PublicRoutes_doNotRequireLogin() throws Exception {
+        when(seoService.sitemap()).thenReturn("<urlset/>");
+        when(productService.suggest("ca", 8)).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/api/v1/users/{username}", "admin"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("admin"))
+                .andExpect(jsonPath("$.email").doesNotExist());
+        mockMvc.perform(get("/api/v1/seo/sitemap.xml")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/production/suggest").param("q", "ca")).andExpect(status().isOk());
+        // chave fora dos prefixos permitidos: 400 (e não 401)
+        mockMvc.perform(get("/api/v1/files/outro/arquivo.txt")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void phase3UserRoutes_requireLogin() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/notifications/unread-count")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/user/me/preferences")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/user/me/following")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/production/{id}/follow", 1L)).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/api/v1/review/{id}/report", 1L).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"reason\":\"SPAM\"}")).andExpect(status().isUnauthorized());
+        mockMvc.perform(multipart("/api/v1/review/{id}/images", 1L)
+                .file(new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1}))).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void notifications_andPreferences_withLogin() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications").cookie(accessCookie(commonUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page.totalElements").value(0));
+        mockMvc.perform(get("/api/v1/notifications/unread-count").cookie(accessCookie(commonUser)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.count").value(0));
+        mockMvc.perform(patch("/api/v1/user/me/preferences").cookie(accessCookie(commonUser))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"emailNotifications\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailNotifications").value(false));
+        mockMvc.perform(get("/api/v1/user/me/preferences").cookie(accessCookie(commonUser)))
+                .andExpect(jsonPath("$.emailNotifications").value(false));
+    }
+
+    @Test
+    void phase3AdminRoutes_requireAdmin() throws Exception {
+        mockMvc.perform(get("/api/v1/admin/reviews/export.csv").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(post("/api/v1/admin/catalog/deduplicate").cookie(accessCookie(commonUser))).andExpect(status().isForbidden());
+        mockMvc.perform(patch("/api/v1/admin/reviews/moderation").cookie(accessCookie(commonUser))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"ids\":[1],\"status\":\"VISIBLE\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(put("/api/v1/admin/reviews/{id}/reply", 1L).cookie(accessCookie(commonUser))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"text\":\"oi\"}")).andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/v1/admin/users/export.csv").cookie(accessCookie(admin)))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
+    }
+
+    @Test
+    void rejectedUrls_andUnknownRoutes_useApiErrorFormat() throws Exception {
+        mockMvc.perform(get("/api/v1/files/reviews/2/%2e%2e/x.jpg"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Requisição inválida"))
+                .andExpect(jsonPath("$.statusCode").value(400));
+        mockMvc.perform(get("/api/v1/production/nao/existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value("NOT_FOUND"));
     }
 }

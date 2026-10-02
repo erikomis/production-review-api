@@ -33,6 +33,9 @@ public interface ReviewService {
      /** Reviews do usuário, inclusive as ocultadas. */
      Page<ReviewResponseDTO> getMyReviews(Long userId, Pageable pageable);
 
+     /** Reviews visíveis de um usuário ativo (perfil público); 404 se não existir ou estiver inativo. */
+     Page<ReviewResponseDTO> getUserReviews(String username, Pageable pageable);
+
      ReviewSummaryDTO getProductSummary(Long productId);
 
      /** Marca/desmarca a review como útil para o usuário. */

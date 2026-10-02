@@ -19,6 +19,11 @@ public class ProductDetailDTO extends ProductSummaryDTO {
 
     private List<ProductImageSummaryDTO> images = new ArrayList<>();
 
+    /** Preenchidos fora do cache (dependem do usuário logado e mudam a cada follow). */
+    private long followersCount;
+
+    private boolean followedByMe;
+
     public static ProductDetailDTO from(ProductSummaryDTO summary, List<ProductImageSummaryDTO> images) {
         ProductDetailDTO detail = new ProductDetailDTO();
         detail.setId(summary.getId());

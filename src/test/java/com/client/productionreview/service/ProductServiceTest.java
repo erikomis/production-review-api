@@ -278,4 +278,24 @@ public class ProductServiceTest {
         verify(productRepository).delete(product);
         verify(eventPublisher).publish(eq(EventType.PRODUCT_DELETED), eq(1L), anyString());
     }
+
+    // ---------- autocompletar ----------
+
+    @Test
+    void suggest_normalizesTermAndPassesLimit() {
+        var item = new com.client.productionreview.dtos.product.ProductSuggestionDTO(1L, "Café", "cafe", "Bebidas");
+        when(productRepository.suggest("cafe", 8)).thenReturn(List.of(item));
+
+        assertEquals(List.of(item), productService.suggest("  CAFÉ ", 8));
+    }
+
+    @Test
+    void suggest_validatesTermAndLimit() {
+        assertThrows(BadRequestException.class, () -> productService.suggest("c", 8));
+        assertThrows(BadRequestException.class, () -> productService.suggest("  ", 8));
+        assertThrows(BadRequestException.class, () -> productService.suggest(null, 8));
+        assertThrows(BadRequestException.class, () -> productService.suggest("cafe", 11));
+        assertThrows(BadRequestException.class, () -> productService.suggest("cafe", 0));
+        verifyNoInteractions(productRepository);
+    }
 }
