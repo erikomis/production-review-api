@@ -1,6 +1,7 @@
 package com.client.productionreview.security;
 
 
+import com.client.productionreview.exception.ErrorResponses;
 import com.client.productionreview.exception.UnauthorizedHandler;
 import com.client.productionreview.metrics.BusinessMetrics;
 import com.client.productionreview.provider.JwtProvider;
@@ -13,6 +14,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -115,6 +118,13 @@ public class SecurityConfig {
         return http.build();
     }
 
+
+    /** URLs recusadas pelo firewall (ex.: {@code %2e%2e}, {@code //}) também saem no formato de erro da API. */
+    @Bean
+    public RequestRejectedHandler requestRejectedHandler() {
+        return (request, response, exception) ->
+                ErrorResponses.write(response, HttpStatus.BAD_REQUEST, "Requisição inválida");
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

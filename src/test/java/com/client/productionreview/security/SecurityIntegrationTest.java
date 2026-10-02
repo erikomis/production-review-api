@@ -444,4 +444,15 @@ class SecurityIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", "text/csv;charset=UTF-8"));
     }
+
+    @Test
+    void rejectedUrls_andUnknownRoutes_useApiErrorFormat() throws Exception {
+        mockMvc.perform(get("/api/v1/files/reviews/2/%2e%2e/x.jpg"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Requisição inválida"))
+                .andExpect(jsonPath("$.statusCode").value(400));
+        mockMvc.perform(get("/api/v1/production/nao/existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.httpStatus").value("NOT_FOUND"));
+    }
 }
